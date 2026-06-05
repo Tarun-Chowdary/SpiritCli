@@ -135,66 +135,79 @@ spirit/
 
 # System Execution Flow
 
-```text
-User
- │
- ▼
+```mermaid
+flowchart TD
 
-spirit scan
+    USER[Developer]
 
- │
- ▼
+    CLI["CLI Commands
+    scan • watch • push • fix • report"]
 
-CLI Layer
+    CORE["Core Engine"]
 
- │
- ▼
+    AST["AST Module"]
 
-Core Engine
+    CONFIG["Configuration Analysis"]
 
- │
- ├───────────────┐
- ▼               ▼
+    DEPGRAPH["Dependency Graph"]
 
-AST         Dependency Graph
+    PROV["Provenance Analysis"]
 
- │               │
- ▼               ▼
+    PHANTOM["Phantom Dependency Detection"]
 
-Config      CVE Analysis
+    API["External Integrations
+    OSV • GitHub • npm • PyPI"]
 
- │               │
- └──────┬────────┘
+    FINDINGS["Findings Engine"]
 
-        ▼
+    SCORE["Fingerprint Engine"]
 
-    Findings
+    GIT["Push Enforcement"]
 
-        ▼
+    REPORT["Reporting Engine"]
 
- Scoring Engine
+    STORAGE["SQLite Storage"]
 
-        ▼
+    OUTPUT["Terminal
+    HTML
+    JSON"]
 
- Security Score
+    USER --> CLI
 
-        ▼
+    CLI --> CORE
 
- Report Engine
+    CORE --> AST
+    CORE --> DEPGRAPH
+    CORE --> PROV
+    CORE --> PHANTOM
 
-        ▼
+    AST --> CONFIG
 
- Terminal / HTML / JSON
+    API --> DEPGRAPH
+    API --> PROV
+
+    CONFIG --> FINDINGS
+    DEPGRAPH --> FINDINGS
+    PROV --> FINDINGS
+    PHANTOM --> FINDINGS
+
+    FINDINGS --> SCORE
+
+    SCORE --> GIT
+    SCORE --> REPORT
+
+    STORAGE --> REPORT
+    STORAGE --> SCORE
+
+    REPORT --> OUTPUT
 ```
 
 ---
 
-# Folder Documentation
+## Folder Documentation
 
 <details>
 <summary><strong>cli/ — Command Interface Layer</strong></summary>
-
----
 
 ## Purpose
 
@@ -216,8 +229,6 @@ This layer contains no security logic.
 
 It only validates arguments and forwards execution to the core engine.
 
----
-
 ### scan.py
 
 Feature:
@@ -231,8 +242,6 @@ Responsibilities:
 - Invoke scanner engine
 - Display scan results
 
----
-
 ### watch.py
 
 Feature:
@@ -244,8 +253,6 @@ Responsibilities:
 - Monitor file changes
 - Trigger incremental scans
 - Display live security feedback
-
----
 
 ### push.py
 
@@ -259,8 +266,6 @@ Responsibilities:
 - Check fingerprint score
 - Trigger push enforcement
 
----
-
 ### fix.py
 
 Feature:
@@ -272,8 +277,6 @@ Responsibilities:
 - Run remediation engine
 - Present patches
 - Apply fixes
-
----
 
 ### report.py
 
@@ -287,9 +290,9 @@ Responsibilities:
 - Export HTML
 - Export JSON
 
-</details>
-
 ---
+
+</details>
 
 <details>
 <summary><strong>core/ — Central Orchestration Layer</strong></summary>
@@ -305,8 +308,6 @@ Without this layer:
 - modules become tightly coupled
 - features become difficult to maintain
 - testing becomes impossible
-
----
 
 ### engine.py
 
@@ -345,8 +346,6 @@ scoring
 reporting
 ```
 
----
-
 ### scanner.py
 
 Responsible for:
@@ -354,8 +353,6 @@ Responsible for:
 - Full scans
 - Incremental scans
 - File collection
-
----
 
 ### findings.py
 
@@ -370,8 +367,6 @@ LowFinding
 
 Standardizes all findings.
 
----
-
 ### severity.py
 
 Converts findings into severity levels.
@@ -379,8 +374,6 @@ Converts findings into severity levels.
 Maps:
 
 CVSS → Critical/High/Medium/Low
-
----
 
 ### fingerprint.py
 
@@ -394,9 +387,9 @@ Used by:
 - push
 - watch
 
-</details>
-
 ---
+
+</details>
 
 <details>
 <summary><strong>ast/ — Abstract Syntax Tree Analysis Engine</strong></summary>
@@ -428,8 +421,6 @@ This module forms the foundation of:
 
 Without this module SpiritCLI would behave similarly to npm audit.
 
----
-
 # Why AST Analysis Is Important
 
 Consider:
@@ -459,8 +450,6 @@ SpiritCLI sees:
 
 This additional context allows SpiritCLI to identify security issues that traditional tools miss.
 
----
-
 # Execution Stage
 
 Runs immediately after:
@@ -482,8 +471,6 @@ Extractors
 ↓
 Security Analysis
 
----
-
 # Folder Structure
 
 ast/
@@ -492,8 +479,6 @@ ast/
 ├── visitors.py
 ├── extractors.py
 └── patterns.py
-
----
 
 ## parser.py
 
@@ -527,8 +512,6 @@ Used By:
 Owner:
 
 Lokesh
-
----
 
 ## visitors.py
 
@@ -564,8 +547,6 @@ Detects:
 Used By:
 
 - extractors.py
-
----
 
 ## extractors.py
 
@@ -605,8 +586,6 @@ Used By:
 - phantom detection
 - dependency tracing
 
----
-
 ## patterns.py
 
 # Purpose
@@ -638,8 +617,6 @@ Used By:
 - extractors.py
 - remediation/
 
----
-
 # Outputs Produced
 
 The AST module produces:
@@ -658,8 +635,6 @@ These outputs are consumed by:
 - phantom/
 - dependency_graph/
 
----
-
 # Feature Mapping
 
 Feature 1:
@@ -674,9 +649,9 @@ Phantom Dependency Detection
 Feature 7:
 Auto Remediation
 
-</details>
-
 ---
+
+</details>
 
 <details>
 <summary><strong>config_analysis/ — Configuration Context Analysis Engine</strong></summary>
@@ -694,8 +669,6 @@ Most security scanners ask:
 SpiritCLI asks:
 
 "Is this dependency configured safely?"
-
----
 
 # Example
 
@@ -717,8 +690,6 @@ Traditional scanners see no difference.
 
 SpiritCLI detects the security risk.
 
----
-
 # Responsibilities
 
 This module:
@@ -727,8 +698,6 @@ This module:
 - Compares them against security rules
 - Generates findings
 - Calculates configuration risk
-
----
 
 # Folder Structure
 
@@ -743,8 +712,6 @@ config_analysis/
     ├── axios.json
     ├── express.json
     └── mongoose.json
-
----
 
 ## analyzer.py
 
@@ -774,8 +741,6 @@ Responsibilities:
 Used By:
 
 core/scanner.py
-
----
 
 ## rule_engine.py
 
@@ -821,8 +786,6 @@ Responsibilities:
 - Severity assignment
 - Risk classification
 
----
-
 ## knowledge_base/
 
 # Purpose
@@ -832,8 +795,6 @@ Central security knowledge repository.
 Stores all security recommendations.
 
 Each file contains rules for a single library.
-
----
 
 ### bcrypt.json
 
@@ -853,8 +814,6 @@ Example:
 }
 ```
 
----
-
 ### jwt.json
 
 Responsible For
@@ -866,8 +825,6 @@ Responsible For
 Detects:
 
 algorithm:none
-
----
 
 ### axios.json
 
@@ -881,8 +838,6 @@ Detects:
 
 rejectUnauthorized:false
 
----
-
 ### express.json
 
 Responsible For
@@ -891,8 +846,6 @@ Responsible For
 - cors configuration
 - cookie security
 
----
-
 ### mongoose.json
 
 Responsible For
@@ -900,8 +853,6 @@ Responsible For
 - schema validation
 - injection protection
 - strict mode
-
----
 
 # Outputs
 
@@ -919,8 +870,6 @@ Example:
 }
 ```
 
----
-
 # Feature Mapping
 
 Feature 1:
@@ -932,9 +881,9 @@ Security Fingerprint
 Feature 7:
 Auto Remediation
 
-</details>
-
 ---
+
+</details>
 
 <details>
 <summary><strong>dependency_graph/ — Dependency Relationship & Risk Tracing Engine</strong></summary>
@@ -956,8 +905,6 @@ SpiritCLI must determine:
 - Which dependency introduced a vulnerable package
 - Whether the vulnerable package is reachable
 - Which functions are affected
-
----
 
 # Example
 
@@ -997,8 +944,6 @@ MD5
 
 This allows precise risk analysis.
 
----
-
 # Folder Structure
 
 dependency_graph/
@@ -1007,8 +952,6 @@ dependency_graph/
 ├── resolver.py
 ├── tracer.py
 └── graph.py
-
----
 
 ## builder.py
 
@@ -1040,8 +983,6 @@ Responsibilities:
 - Build adjacency lists
 - Create dependency relationships
 
----
-
 ## resolver.py
 
 # Purpose
@@ -1069,8 +1010,6 @@ Responsibilities:
 - Discover transitive dependencies
 - Resolve dependency hierarchy
 - Detect dependency depth
-
----
 
 ## tracer.py
 
@@ -1104,8 +1043,6 @@ Responsibilities:
 - Reachability analysis
 - Blast radius analysis
 
----
-
 ## graph.py
 
 # Purpose
@@ -1132,8 +1069,6 @@ builder.py
 resolver.py
 tracer.py
 
----
-
 # Outputs
 
 Produces:
@@ -1145,8 +1080,6 @@ Produces:
   "path": ["payment-sdk", "bank-utils", "crypto-js"]
 }
 ```
-
----
 
 # Why This Feature Matters
 
@@ -1178,8 +1111,6 @@ Customer transactions
 
 This provides significantly more context.
 
----
-
 # Feature Mapping
 
 Feature 2:
@@ -1191,9 +1122,9 @@ Security Fingerprint
 Feature 7:
 Auto Remediation
 
-</details>
-
 ---
+
+</details>
 
 <details>
 <summary><strong>provenance/ — Supply Chain Trust & Provenance Analysis Engine</strong></summary>
@@ -1226,8 +1157,6 @@ Examples:
 
 The provenance module evaluates the trustworthiness of dependencies before considering vulnerabilities.
 
----
-
 # Why This Module Exists
 
 Modern software supply-chain attacks are increasing.
@@ -1244,8 +1173,6 @@ Traditional scanners failed because:
 ✓ No CVE existed initially
 
 SpiritCLI attempts to identify trust signals before a vulnerability is publicly disclosed.
-
----
 
 # Execution Stage
 
@@ -1265,8 +1192,6 @@ Trust Evaluation
 ↓
 Trust Score
 
----
-
 # Folder Structure
 
 provenance/
@@ -1276,8 +1201,6 @@ provenance/
 ├── typosquat.py
 ├── github_analyzer.py
 └── registry_checker.py
-
----
 
 ## trust_engine.py
 
@@ -1313,8 +1236,6 @@ Used By:
 - scoring/
 - reporting/
 
----
-
 ## maintainer_score.py
 
 # Purpose
@@ -1343,8 +1264,6 @@ Responsibilities:
 - Maintainer count analysis
 - Maintainer diversity scoring
 - Activity tracking
-
----
 
 ## typosquat.py
 
@@ -1378,8 +1297,6 @@ Example Output:
   "risk": "high"
 }
 ```
-
----
 
 ## github_analyzer.py
 
@@ -1439,8 +1356,6 @@ Produces:
 }
 ```
 
----
-
 # Feature Mapping
 
 Feature 5:
@@ -1451,8 +1366,6 @@ Security Fingerprint
 
 Feature 8:
 Spirit Report
-
----
 
 # Dependencies
 
@@ -1467,15 +1380,13 @@ Provides Data To:
 - scoring/
 - reporting/
 
----
-
 # Owner
 
 Anish
 
-</details>
-
 ---
+
+</details>
 
 <details>
 <summary><strong>phantom/ — Phantom Dependency Detection Engine</strong></summary>
@@ -1495,8 +1406,6 @@ This module identifies:
 1. Ghost Dependencies
 2. Undeclared Imports
 
----
-
 # Why This Matters
 
 Unused dependencies increase:
@@ -1510,8 +1419,6 @@ Undeclared imports create:
 - Build instability
 - Dependency ambiguity
 - Security blind spots
-
----
 
 # Example
 
@@ -1541,8 +1448,6 @@ Undeclared Import:
 
 axios
 
----
-
 # Execution Stage
 
 Runs after:
@@ -1559,8 +1464,6 @@ Graph Comparison
 ↓
 Phantom Detection
 
----
-
 # Folder Structure
 
 phantom/
@@ -1569,8 +1472,6 @@ phantom/
 ├── import_graph.py
 ├── manifest_graph.py
 └── comparator.py
-
----
 
 ## detector.py
 
@@ -1592,8 +1493,6 @@ Outputs:
  "undeclared_imports":[...]
 }
 ```
-
----
 
 ## import_graph.py
 
@@ -1622,8 +1521,6 @@ Source:
 
 ast/
 
----
-
 ## manifest_graph.py
 
 # Purpose
@@ -1640,8 +1537,6 @@ Example Output:
 ```json
 ["axios", "lodash", "express"]
 ```
-
----
 
 ## comparator.py
 
@@ -1673,8 +1568,6 @@ Responsibilities:
 - Difference analysis
 - Risk classification
 
----
-
 # Outputs
 
 Produces:
@@ -1686,8 +1579,6 @@ Produces:
 }
 ```
 
----
-
 # Feature Mapping
 
 Feature 6:
@@ -1698,8 +1589,6 @@ Security Fingerprint
 
 Feature 7:
 Auto Remediation
-
----
 
 # Dependencies
 
@@ -1714,15 +1603,13 @@ Provides Data To:
 - scoring/
 - reporting/
 
----
-
 # Owner
 
 Lokesh
 
-</details>
-
 ---
+
+</details>
 
 <details>
 <summary><strong>remediation/ — Smart Auto-Remediation Engine</strong></summary>
@@ -1743,8 +1630,6 @@ while maintaining developer control.
 
 Nothing is modified automatically without review.
 
----
-
 # Why This Module Exists
 
 Traditional scanners provide:
@@ -1760,8 +1645,6 @@ Developers must manually:
 
 SpiritCLI automates most of this workflow.
 
----
-
 # Example
 
 Detected:
@@ -1775,8 +1658,6 @@ Suggested Fix:
 ```javascript
 bcrypt.hashSync(password, 12);
 ```
-
----
 
 # Execution Stage
 
@@ -1800,8 +1681,6 @@ User Review
 ↓
 Apply Changes
 
----
-
 # Folder Structure
 
 remediation/
@@ -1810,8 +1689,6 @@ remediation/
 ├── patch_generator.py
 ├── diff_viewer.py
 └── upgrade_engine.py
-
----
 
 ## fixer.py
 
@@ -1828,8 +1705,6 @@ Responsibilities:
 Acts as:
 
 Central remediation engine.
-
----
 
 ## patch_generator.py
 
@@ -1859,8 +1734,6 @@ Responsibilities:
 - Rule-driven modifications
 - Safe replacements
 
----
-
 ## diff_viewer.py
 
 # Purpose
@@ -1883,8 +1756,6 @@ Responsibilities:
 Used By:
 
 spirit fix
-
----
 
 ## upgrade_engine.py
 
@@ -1917,8 +1788,6 @@ Future:
 - Changelog analysis
 - Breaking change detection
 
----
-
 # Outputs
 
 Produces:
@@ -1930,8 +1799,6 @@ Produces:
 }
 ```
 
----
-
 # Feature Mapping
 
 Feature 7:
@@ -1942,8 +1809,6 @@ Configuration Context Analysis
 
 Feature 6:
 Phantom Dependency Detection
-
----
 
 # Dependencies
 
@@ -1959,31 +1824,15 @@ Provides Data To:
 - reporting/
 - storage/
 
----
-
 # Owner
 
 Tarun (Architecture)
 
 - Lokesh (Code Patching Logic)
 
+---
+
 </details>
-
----
-
-# Think of them like this:
-
-AST + Config Analysis + Dependency Graph
-↓
-Findings
-↓
-Scoring
-↓
-Git Enforcement
-↓
-Reporting
-
----
 
 <details>
 <summary><strong>scoring/ — Security Health Fingerprint Engine</strong></summary>
@@ -2008,8 +1857,6 @@ This score becomes the central metric used by:
 - spirit watch
 - spirit push
 - spirit report
-
----
 
 # Why This Module Exists
 
@@ -2037,8 +1884,6 @@ Final Score          : 78
 
 This makes security easier to understand and track over time.
 
----
-
 # Security Fingerprint Formula
 
 Current Design
@@ -2063,7 +1908,7 @@ Score =
 
 # Security Zones
 
-Safe Zone
+<strong>Safe Zone</strong>
 
 71–100
 
@@ -2071,9 +1916,7 @@ Meaning:
 
 Project is production ready.
 
----
-
-Warning Zone
+<strong>Warning Zone</strong>
 
 36–70
 
@@ -2083,9 +1926,7 @@ Moderate risk exists.
 
 Developer review required.
 
----
-
-Quarantine Zone
+<strong>Quarantine Zone</strong>
 
 0–35
 
@@ -2094,8 +1935,6 @@ Meaning:
 Critical security problems detected.
 
 Pushes may be blocked.
-
----
 
 # Folder Structure
 
@@ -2107,8 +1946,6 @@ scoring/
 ├── freshness_score.py
 ├── phantom_score.py
 └── calculator.py
-
----
 
 ## config_score.py
 
@@ -2139,8 +1976,6 @@ Responsibilities:
 - Aggregate configuration findings
 - Produce Configuration Safety score
 
----
-
 ## cve_score.py
 
 # Purpose
@@ -2166,8 +2001,6 @@ Responsibilities:
 - Normalize vulnerability impact
 - Generate CVE component score
 
----
-
 ## trust_score.py
 
 # Purpose
@@ -2187,8 +2020,6 @@ Factors:
 Produces:
 
 Trust score
-
----
 
 ## freshness_score.py
 
@@ -2212,8 +2043,6 @@ Package not updated for:
 
 Score reduction
 
----
-
 ## phantom_score.py
 
 # Purpose
@@ -2230,8 +2059,6 @@ More phantom dependencies
 ↓
 
 Lower score
-
----
 
 ## calculator.py
 
@@ -2260,8 +2087,6 @@ Produces:
 
 Final Security Fingerprint
 
----
-
 # Outputs
 
 Produces:
@@ -2273,8 +2098,6 @@ Produces:
 }
 ```
 
----
-
 # Feature Mapping
 
 Feature 3:
@@ -2285,8 +2108,6 @@ Risk-Based Push Control
 
 Feature 8:
 Spirit Report
-
----
 
 # Dependencies
 
@@ -2302,15 +2123,13 @@ Provides Data To:
 - git/
 - reporting/
 
----
-
 # Owner
 
 Tarun
 
-</details>
-
 ---
+
+</details>
 
 <details>
 <summary><strong>git/ — Risk-Based Push Enforcement Engine</strong></summary>
@@ -2326,8 +2145,6 @@ Passive Scanner
 into
 
 Active Security Gatekeeper
-
----
 
 # Why This Module Exists
 
@@ -2345,11 +2162,9 @@ Security Enforcement
 
 The project security score directly affects whether code can be pushed.
 
----
-
 # Security Zones
 
-Quarantine
+<strong>Quarantine</strong>
 
 Score: 0–35
 
@@ -2357,9 +2172,7 @@ Action:
 
 Push Blocked
 
----
-
-Warning
+<strong>Warning</strong>
 
 Score: 36–70
 
@@ -2367,17 +2180,13 @@ Action:
 
 Acknowledgement Required
 
----
-
-Safe
+<strong>Safe</strong>
 
 Score: 71–100
 
 Action:
 
 Push Allowed
-
----
 
 # Execution Flow
 
@@ -2407,8 +2216,6 @@ Policy Evaluation
 
 Allow / Block
 
----
-
 # Folder Structure
 
 git/
@@ -2417,8 +2224,6 @@ git/
 ├── push_guard.py
 ├── diff_scanner.py
 └── audit_log.py
-
----
 
 ## hook_manager.py
 
@@ -2443,8 +2248,6 @@ Example:
 spirit install-hooks
 ```
 
----
-
 ## push_guard.py
 
 # Purpose
@@ -2468,8 +2271,6 @@ Push Blocked
 ```
 
 This is the heart of Feature 4.
-
----
 
 ## diff_scanner.py
 
@@ -2496,8 +2297,6 @@ Responsibilities:
 - Incremental analysis
 - Changed file detection
 - Fast watch mode support
-
----
 
 ## audit_log.py
 
@@ -2529,8 +2328,6 @@ Compliance
 Forensics
 Reporting
 
----
-
 # Outputs
 
 Produces:
@@ -2542,8 +2339,6 @@ Produces:
 }
 ```
 
----
-
 # Feature Mapping
 
 Feature 4:
@@ -2551,8 +2346,6 @@ Risk-Based Push Control
 
 Feature 3:
 Security Fingerprint
-
----
 
 # Dependencies
 
@@ -2566,15 +2359,13 @@ Provides Data To:
 
 - reporting/
 
----
-
 # Owner
 
 Likhith
 
-</details>
-
 ---
+
+</details>
 
 <details>
 <summary><strong>reporting/ — Security Intelligence Reporting Engine</strong></summary>
@@ -2592,8 +2383,6 @@ It explains:
 - How security changed
 - What should be fixed
 
----
-
 # Why This Module Exists
 
 Developers do not want:
@@ -2609,17 +2398,13 @@ They want:
 
 The reporting module provides exactly that.
 
----
-
 # Reporting Types
 
-Terminal Reports
+<strong>Terminal Reports</strong>
 
 Displayed during scans.
 
----
-
-JSON Reports
+<strong>JSON Reports</strong>
 
 Used by:
 
@@ -2627,17 +2412,13 @@ Used by:
 - SIEM systems
 - Automation
 
----
-
-HTML Reports
+<strong>HTML Reports</strong>
 
 Used by:
 
 - Security teams
 - Auditors
 - Project managers
-
----
 
 # Folder Structure
 
@@ -2648,8 +2429,6 @@ reporting/
 ├── json_exporter.py
 ├── trajectory.py
 └── root_cause.py
-
----
 
 ## report_generator.py
 
@@ -2669,8 +2448,6 @@ Produces:
 Unified report object.
 
 Acts as central reporting engine.
-
----
 
 ## html_exporter.py
 
@@ -2697,8 +2474,6 @@ Used during:
 - Security reviews
 - Audits
 
----
-
 ## json_exporter.py
 
 # Purpose
@@ -2720,8 +2495,6 @@ Output:
   "findings": []
 }
 ```
-
----
 
 ## trajectory.py
 
@@ -2749,8 +2522,6 @@ Security trajectory
 Used for:
 
 Feature 8
-
----
 
 ## root_cause.py
 
@@ -2782,8 +2553,6 @@ Responsibilities:
 - Identify changes
 - Explain degradation
 
----
-
 # Outputs
 
 Produces:
@@ -2798,8 +2567,6 @@ Security Trend Analysis
 
 Root Cause Analysis
 
----
-
 # Feature Mapping
 
 Feature 8:
@@ -2810,8 +2577,6 @@ Security Fingerprint
 
 Feature 4:
 Risk-Based Push Control
-
----
 
 # Dependencies
 
@@ -2830,24 +2595,13 @@ Security Teams
 
 CI/CD Systems
 
----
-
 # Owner
 
 Anish
 
+---
+
 </details>
-
----
-
-# Think of them like this:
-
-integrations/ → Gets external data
-storage/ → Saves data
-models/ → Defines data structures
-utils/ → Shared helper functions
-
----
 
 <details>
 <summary><strong>integrations/ — External Services & Data Source Integration Layer</strong></summary>
@@ -2868,8 +2622,6 @@ and
 
 External Security Ecosystem
 
----
-
 # Why This Module Exists
 
 SpiritCLI requires information that cannot be generated locally.
@@ -2882,8 +2634,6 @@ Examples:
 - Package publication history
 
 Rather than hardcoding this information, SpiritCLI retrieves it dynamically.
-
----
 
 # Execution Stage
 
@@ -2901,8 +2651,6 @@ Security Data
 ↓
 Analysis Engines
 
----
-
 # Folder Structure
 
 integrations/
@@ -2912,8 +2660,6 @@ integrations/
 ├── npm_registry.py
 ├── pypi.py
 └── license_api.py
-
----
 
 ## osv.py
 
@@ -2954,8 +2700,6 @@ Consumed By:
 - cve_score.py
 - reporting/
 
----
-
 ## github_api.py
 
 # Purpose
@@ -2976,8 +2720,6 @@ Feature 5
 
 Provenance Trust Score
 
----
-
 ## npm_registry.py
 
 # Purpose
@@ -2996,8 +2738,6 @@ Supports:
 - Provenance Analysis
 - Freshness Analysis
 
----
-
 ## pypi.py
 
 # Purpose
@@ -3013,8 +2753,6 @@ Responsibilities:
 - Package metadata retrieval
 - Version history retrieval
 - Release information retrieval
-
----
 
 ## license_api.py
 
@@ -3037,8 +2775,6 @@ Future Feature:
 
 Compliance Analysis
 
----
-
 # Outputs
 
 Produces:
@@ -3050,8 +2786,6 @@ Produces:
  "cves":[...]
 }
 ```
-
----
 
 # Feature Mapping
 
@@ -3067,8 +2801,6 @@ Provenance Trust
 Feature 8:
 Reporting
 
----
-
 # Dependencies
 
 Consumes:
@@ -3082,15 +2814,13 @@ Provides Data To:
 - reporting/
 - dependency_graph/
 
----
-
 # Owner
 
 Anish
 
-</details>
-
 ---
+
+</details>
 
 <details>
 <summary><strong>storage/ — Persistence & Historical Analysis Layer</strong></summary>
@@ -3110,8 +2840,6 @@ SpiritCLI would be unable to:
 - Generate trajectory reports
 - Explain score changes
 
----
-
 # Why This Module Exists
 
 Many SpiritCLI features depend on historical information.
@@ -3128,8 +2856,6 @@ Push Audit History
 
 These features require persistent storage.
 
----
-
 # Execution Stage
 
 Runs during:
@@ -3142,8 +2868,6 @@ Every push
 
 Every remediation
 
----
-
 # Folder Structure
 
 storage/
@@ -3152,8 +2876,6 @@ storage/
 ├── schema.sql
 ├── scans.db
 └── history.py
-
----
 
 ## database.py
 
@@ -3173,8 +2895,6 @@ Acts as the central database gateway.
 Used By:
 
 All modules.
-
----
 
 ## schema.sql
 
@@ -3196,8 +2916,6 @@ history
 
 This file initializes the database.
 
----
-
 ## scans.db
 
 # Purpose
@@ -3217,8 +2935,6 @@ Usually generated automatically.
 
 Not manually edited.
 
----
-
 ## history.py
 
 # Purpose
@@ -3237,8 +2953,6 @@ Feature 8
 
 Spirit Report
 
----
-
 # Example Stored Data
 
 ```json
@@ -3248,8 +2962,6 @@ Spirit Report
   "timestamp": "2026-07-14"
 }
 ```
-
----
 
 # Feature Mapping
 
@@ -3261,8 +2973,6 @@ Audit Logging
 
 Feature 8:
 Security Trajectory
-
----
 
 # Dependencies
 
@@ -3276,15 +2986,13 @@ Provides Data To:
 - git/
 - scoring/
 
----
-
 # Owner
 
 Anish
 
-</details>
-
 ---
+
+</details>
 
 <details>
 <summary><strong>models/ — Core Data Model Definitions</strong></summary>
@@ -3301,8 +3009,6 @@ Different modules would use inconsistent data formats.
 
 This would make integration difficult.
 
----
-
 # Why This Module Exists
 
 Consider:
@@ -3317,15 +3023,11 @@ All must agree on the same structure.
 
 Models provide that structure.
 
----
-
 # Execution Stage
 
 Used Everywhere.
 
 Every subsystem imports models.
-
----
 
 # Folder Structure
 
@@ -3335,8 +3037,6 @@ models/
 ├── dependency.py
 ├── score.py
 └── report.py
-
----
 
 ## finding.py
 
@@ -3357,8 +3057,6 @@ Finding(
 Used By:
 
 Nearly every module.
-
----
 
 ## dependency.py
 
@@ -3381,8 +3079,6 @@ Supports:
 - Provenance
 - Scoring
 
----
-
 ## score.py
 
 # Purpose
@@ -3403,8 +3099,6 @@ Used By:
 - Reporting
 - Git Enforcement
 
----
-
 ## report.py
 
 # Purpose
@@ -3419,8 +3113,6 @@ Contains:
 
 Acts as the final reporting model.
 
----
-
 # Why Models Are Important
 
 Benefits:
@@ -3430,8 +3122,6 @@ Benefits:
 - Easier Testing
 - Easier Refactoring
 
----
-
 # Feature Mapping
 
 Used By:
@@ -3439,8 +3129,6 @@ Used By:
 ALL FEATURES
 
 Feature 1 → 8
-
----
 
 # Dependencies
 
@@ -3452,17 +3140,15 @@ Provides:
 
 Common Data Structures
 
----
-
 # Owner
 
 Shared Responsibility
 
 All Developers
 
-</details>
-
 ---
+
+</details>
 
 <details>
 <summary><strong>utils/ — Shared Utilities & Infrastructure Helpers</strong></summary>
@@ -3472,8 +3158,6 @@ All Developers
 The utilities folder contains reusable helper functions.
 
 These are pieces of functionality used throughout the project but which do not belong to any specific feature.
-
----
 
 # Why This Module Exists
 
@@ -3491,13 +3175,9 @@ Path handling repeated.
 
 Utilities centralize these common tasks.
 
----
-
 # Execution Stage
 
 Used Everywhere.
-
----
 
 # Folder Structure
 
@@ -3507,8 +3187,6 @@ utils/
 ├── constants.py
 ├── config.py
 └── helpers.py
-
----
 
 ## logger.py
 
@@ -3538,8 +3216,6 @@ logger.warning(
 )
 ```
 
----
-
 ## constants.py
 
 # Purpose
@@ -3558,8 +3234,6 @@ Benefits:
 
 - Avoid magic numbers
 - Easier maintenance
-
----
 
 ## config.py
 
@@ -3580,8 +3254,6 @@ Responsibilities:
 - Environment variables
 - Runtime settings
 
----
-
 ## helpers.py
 
 # Purpose
@@ -3599,8 +3271,6 @@ Functions here should remain generic.
 
 If a helper becomes feature-specific, it should move into that feature's folder.
 
----
-
 # Best Practices
 
 Allowed:
@@ -3617,8 +3287,6 @@ helpers.calculate_fingerprint()
 
 Feature-specific logic should never be placed in utils.
 
----
-
 # Feature Mapping
 
 Supports:
@@ -3626,8 +3294,6 @@ Supports:
 ALL FEATURES
 
 Indirectly used by every subsystem.
-
----
 
 # Dependencies
 
@@ -3638,8 +3304,6 @@ All modules
 Provides:
 
 Shared Infrastructure
-
----
 
 # Owner
 
@@ -3661,8 +3325,6 @@ All Developers
 4. Register command
 5. Integrate with engine.py
 
----
-
 # Dependency Rules
 
 Allowed:
@@ -3680,8 +3342,6 @@ utils → core
 
 This prevents circular dependencies.
 
----
-
 # Ownership Matrix
 
 | Folder           | Owner   |
@@ -3694,8 +3354,6 @@ This prevents circular dependencies.
 | reporting        | Anish   |
 | storage          | Anish   |
 | integrations     | Anish   |
-
----
 
 # Architecture Philosophy
 

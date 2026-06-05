@@ -433,7 +433,9 @@ Contains the actual implementation of SpiritCLI.
 
 This is the core application directory.
 
-## All features are implemented here.
+All features are implemented here.
+
+---
 
 # Future Scope
 

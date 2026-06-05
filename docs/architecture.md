@@ -4,40 +4,38 @@
 
 # High-Level Architecture
 
-                 +----------------+
-                 |   CLI Layer    |
-                 +--------+-------+
-                          |
-                          v
-                 +----------------+
-                 | Scan Engine    |
-                 +--------+-------+
-                          |
-      +-------------------+------------------+
-      |                   |                  |
-      v                   v                  v
+```mermaid
 
-+-----------+ +---------------+ +---------------+
-| AST Layer | | Dependency | | Registry APIs |
-| | | Graph Layer | | |
-+-----------+ +---------------+ +---------------+
-| | |
-+-------------------+------------------+
-|
-v
-+----------------+
-| Findings Engine|
-+--------+-------+
-|
-v
-+----------------+
-| Scoring Engine |
-+--------+-------+
-|
-v
-+----------------+
-| Reporting |
-+----------------+
+flowchart TD
+
+    CLI[CLI Layer]
+
+    SCAN[Scan Engine]
+
+    AST[AST Layer]
+    GRAPH[Dependency Graph Layer]
+    API[Registry APIs]
+
+    FINDINGS[Findings Engine]
+
+    SCORE[Scoring Engine]
+
+    REPORT[Reporting Engine]
+
+    CLI --> SCAN
+
+    SCAN --> AST
+    SCAN --> GRAPH
+    SCAN --> API
+
+    AST --> FINDINGS
+    GRAPH --> FINDINGS
+    API --> FINDINGS
+
+    FINDINGS --> SCORE
+
+    SCORE --> REPORT
+```
 
 ---
 

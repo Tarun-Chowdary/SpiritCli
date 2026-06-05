@@ -1,0 +1,9 @@
+click
+rich
+tree-sitter
+tree-sitter-javascript
+tree-sitter-python
+watchdog
+gitpython
+requests
+jinja2

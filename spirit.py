@@ -6,163 +6,297 @@ import click
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
+from rich.text import Text
+from rich.align import Align
 from rich import box
+from rich.rule import Rule
+from rich.columns import Columns
 from core import Engine
 
 console = Console()
 
+BANNER = """
+[bold cyan]
+ ░██████╗██████╗░██╗██████╗░██╗████████╗ ░█████╗░██╗░░░░░██╗
+ ██╔════╝██╔══██╗██║██╔══██╗██║╚══██╔══╝ ██╔══██╗██║░░░░░██║
+ ╚█████╗░██████╔╝██║██████╔╝██║░░░██║░░░ ██║░░╚═╝██║░░░░░██║
+ ░╚═══██╗██╔═══╝░██║██╔══██╗██║░░░██║░░░ ██║░░██╗██║░░░░░██║
+ ██████╔╝██║░░░░░██║██║░░██║██║░░░██║░░░ ╚█████╔╝███████╗██║
+ ╚═════╝░╚═╝░░░░░╚═╝╚═╝░░╚═╝╚═╝░░░╚═╝░░░ ╚════╝░╚══════╝╚═╝
+[/bold cyan]
+[dim cyan]  Real-Time Dependency Security Intelligence for Banking[/dim cyan]
+[dim]  Team DrunkenDevs[/dim]
+"""
+
+def print_banner():
+    console.print(BANNER, justify="center")
+    console.print(Rule(style="cyan"))
+
+def get_zone_style(zone):
+    if zone == "SAFE":
+        return "bold green", "✅", "green"
+    elif zone == "WARNING":
+        return "bold yellow", "⚠️ ", "yellow"
+    else:
+        return "bold red", "🚨", "red"
+
+def display_score(score):
+    style, icon, color = get_zone_style(score.zone)
+    
+    # score breakdown panels
+    panels = [
+        Panel(
+            f"[bold]{score.config_score}/100[/bold]",
+            title="[cyan]Config Safety[/cyan]",
+            border_style="cyan",
+            width=20
+        ),
+        Panel(
+            f"[bold]{score.cve_score}/100[/bold]",
+            title="[cyan]CVE Exposure[/cyan]",
+            border_style="cyan",
+            width=20
+        ),
+        Panel(
+            f"[bold]{score.trust_score}/100[/bold]",
+            title="[cyan]Trust Score[/cyan]",
+            border_style="cyan",
+            width=20
+        ),
+        Panel(
+            f"[bold]{score.freshness_score}/100[/bold]",
+            title="[cyan]Freshness[/cyan]",
+            border_style="cyan",
+            width=20
+        ),
+        Panel(
+            f"[bold]{score.phantom_score}/100[/bold]",
+            title="[cyan]Phantom Risk[/cyan]",
+            border_style="cyan",
+            width=20
+        ),
+    ]
+    
+    console.print(Columns(panels, equal=True, expand=True))
+    console.print()
+    
+    # main score
+    console.print(Panel(
+        Align.center(
+            f"[{style}]{icon} {score.total}/100 -- {score.zone} {icon}[/{style}]"
+        ),
+        title="[bold white]Security Fingerprint[/bold white]",
+        border_style=color,
+        padding=(1, 4)
+    ))
+
+def display_findings(findings):
+    if not findings:
+        console.print(Panel(
+            Align.center("[bold green]✅ No vulnerabilities detected. Codebase is secure.[/bold green]"),
+            border_style="green"
+        ))
+        return
+    
+    console.print()
+    console.print(Rule("[bold red]Security Findings[/bold red]", style="red"))
+    console.print()
+    
+    table = Table(
+        box=box.ROUNDED,
+        show_header=True,
+        header_style="bold cyan",
+        border_style="cyan",
+        row_styles=["", "dim"],
+        padding=(0, 1)
+    )
+    
+    table.add_column("  Severity", width=12)
+    table.add_column("Library", width=14)
+    table.add_column("File", width=35)
+    table.add_column("Line", width=6, justify="center")
+    table.add_column("Issue", width=50)
+    table.add_column("Fix", width=35)
+    
+    severity_styles = {
+        "critical": ("red", "🔴 CRITICAL"),
+        "high":     ("orange3", "🟠 HIGH"),
+        "medium":   ("yellow", "🟡 MEDIUM"),
+        "low":      ("blue", "🔵 LOW")
+    }
+    
+    for f in findings:
+        color, label = severity_styles.get(f.severity, ("white", f.severity.upper()))
+        table.add_row(
+            f"[{color}]{label}[/{color}]",
+            f"[bold]{f.library}[/bold]",
+            f"[dim]{f.file}[/dim]",
+            f"[cyan]{f.line}[/cyan]",
+            f.message,
+            f"[green]{f.fix or 'Review manually'}[/green]"
+        )
+    
+    console.print(table)
+
 @click.group()
 def cli():
-    """SpiritCLI — Real-Time Dependency Security Intelligence"""
+    """SpiritCLI -- Real-Time Dependency Security Intelligence"""
     pass
 
 @cli.command()
 @click.argument('path', default='.')
 def scan(path):
     """Run a full security scan"""
-    console.print(Panel(
-        f"[bold cyan]SpiritCLI[/bold cyan] scanning [bold]{path}[/bold]",
-        box=box.DOUBLE
-    ))
-    with console.status("[cyan]Scanning...[/cyan]", spinner="dots"):
+    print_banner()
+    
+    console.print(f"\n[cyan]Target:[/cyan] [bold]{path}[/bold]")
+    console.print()
+    
+    with console.status(
+        "[cyan]Scanning dependencies and configurations...[/cyan]",
+        spinner="dots"
+    ):
         engine = Engine(path)
-    report = engine.run()
+        report = engine.run()
     
-    # score color
-    if report.score.zone == "SAFE":
-        color = "green"
-    elif report.score.zone == "WARNING":
-        color = "yellow"
-    else:
-        color = "red"
+    console.print(f"[dim]Scanned {len(report.dependencies)} dependencies[/dim]")
+    console.print()
     
-    # score panel
-    console.print(Panel(
-        f"[bold {color}]{report.score.total}/100 — {report.score.zone}[/bold {color}]\n\n"
-        f"Config Safety:  {report.score.config_score}/100\n"
-        f"CVE Exposure:   {report.score.cve_score}/100\n"
-        f"Trust Score:    {report.score.trust_score}/100\n"
-        f"Freshness:      {report.score.freshness_score}/100\n"
-        f"Phantom Risk:   {report.score.phantom_score}/100",
-        title="Security Fingerprint"
-    ))
+    display_score(report.score)
+    display_findings(report.findings)
     
-    # findings table
-    if report.findings:
-        table = Table(box=box.ROUNDED, show_header=True, header_style="bold")
-        table.add_column("Severity", width=10)
-        table.add_column("Library", width=12)
-        table.add_column("File", width=30)
-        table.add_column("Line", width=6)
-        table.add_column("Message", width=60)
-        
-        for f in report.findings:
-            color = {
-                "critical": "red",
-                "high": "orange3",
-                "medium": "yellow",
-                "low": "blue"
-            }.get(f.severity, "white")
-            
-            table.add_row(
-                f"[{color}]{f.severity.upper()}[/{color}]",
-                f.library,
-                f.file,
-                str(f.line),
-                f.message
-            )
-        
-        console.print("\n[bold]Findings:[/bold]")
-        console.print(table)
-    else:
-        console.print("\n[green]No findings detected. Codebase looks clean.[/green]")
-    
-    # summary
-    console.print(f"\n[cyan]Scanned:[/cyan] {len(report.dependencies)} dependencies across {path}")
-
-@cli.command()
-@click.argument('path', default='.')
-def watch(path):
-    """Watch for file changes and scan incrementally"""
-    console.print(f"[cyan]Watching[/cyan] [bold]{path}[/bold]...")
+    console.print()
+    console.print(Rule(style="cyan"))
+    console.print(
+        f"[dim]Scan complete -- {report.timestamp}[/dim]",
+        justify="center"
+    )
 
 @cli.command()
 @click.argument('path', default='.')
 def push(path):
     """Run push enforcement check"""
-    with console.status("[cyan]Running security check before push...[/cyan]", spinner="dots"):
+    print_banner()
+    
+    with console.status(
+        "[cyan]Running security gate check...[/cyan]",
+        spinner="dots"
+    ):
         engine = Engine(path)
         report = engine.run()
     
     score = report.score.total
     zone = report.score.zone
     findings = report.findings
-    
     critical = [f for f in findings if f.severity == "critical"]
     high = [f for f in findings if f.severity == "high"]
     
+    console.print()
+    
     if zone == "QUARANTINE":
         console.print(Panel(
-            f"[bold red]PUSH BLOCKED[/bold red]\n\n"
-            f"Score: {score}/100 -- QUARANTINE\n\n"
-            f"Critical findings: {len(critical)}\n"
-            f"High findings: {len(high)}\n\n"
-            f"Fix all critical findings before pushing.\n"
-            f"Run [cyan]spirit fix {path}[/cyan] to auto-remediate.",
-            title="[red]PUSH REJECTED[/red]",
-            border_style="red"
+            Align.center(
+                f"[bold red]🚨 PUSH BLOCKED 🚨[/bold red]\n\n"
+                f"[red]Score: {score}/100 -- QUARANTINE[/red]\n\n"
+                f"[white]Critical findings: [red]{len(critical)}[/red][/white]\n"
+                f"[white]High findings: [orange3]{len(high)}[/orange3][/white]\n\n"
+                f"[dim]Fix all critical findings before pushing.\n"
+                f"Run [cyan]spirit fix {path}[/cyan] to auto-remediate.[/dim]"
+            ),
+            title="[bold red]SECURITY GATE -- REJECTED[/bold red]",
+            border_style="red",
+            padding=(1, 4)
         ))
+        
+        if critical:
+            console.print()
+            console.print(Rule("[red]Critical Issues[/red]", style="red"))
+            for f in critical:
+                console.print(
+                    f"  [red]🔴[/red] [bold]{f.library}[/bold] -- "
+                    f"{f.message} "
+                    f"[dim]({f.file}:{f.line})[/dim]"
+                )
         raise SystemExit(1)
     
     elif zone == "WARNING":
         console.print(Panel(
-            f"[yellow]Score: {score}/100 -- WARNING[/yellow]\n\n"
-            f"Active findings:\n"
-            f"  Critical: {len(critical)}\n"
-            f"  High: {len(high)}\n\n"
-            f"Review findings before pushing.",
-            title="[yellow]PUSH WARNING[/yellow]",
-            border_style="yellow"
+            Align.center(
+                f"[bold yellow]⚠️  PUSH WARNING ⚠️ [/bold yellow]\n\n"
+                f"[yellow]Score: {score}/100 -- WARNING[/yellow]\n\n"
+                f"[white]Critical: [red]{len(critical)}[/red]  "
+                f"High: [orange3]{len(high)}[/orange3][/white]\n\n"
+                f"[dim]Developer acknowledgement required.[/dim]"
+            ),
+            title="[bold yellow]SECURITY GATE -- REVIEW REQUIRED[/bold yellow]",
+            border_style="yellow",
+            padding=(1, 4)
         ))
         
         if critical:
-            console.print("\n[bold red]Critical findings that need attention:[/bold red]")
+            console.print()
+            console.print(Rule("[yellow]Critical Findings[/yellow]", style="yellow"))
             for f in critical:
-                console.print(f"  [red]--[/red] {f.library} | {f.message} | {f.file}:{f.line}")
+                console.print(
+                    f"  [red]🔴[/red] [bold]{f.library}[/bold] -- "
+                    f"{f.message} "
+                    f"[dim]({f.file}:{f.line})[/dim]"
+                )
         
+        console.print()
         confirmed = click.confirm(
-            "\nI have reviewed all findings and accept the risk",
+            "I have reviewed all findings and accept the risk",
             default=False
         )
         
         if confirmed:
-            console.print("[yellow]Push proceeding with acknowledged risk.[/yellow]")
+            console.print(Panel(
+                Align.center("[yellow]Push proceeding with acknowledged risk.[/yellow]"),
+                border_style="yellow"
+            ))
         else:
-            console.print("[red]Push cancelled.[/red]")
+            console.print(Panel(
+                Align.center("[red]Push cancelled by developer.[/red]"),
+                border_style="red"
+            ))
             raise SystemExit(1)
     
     else:
         console.print(Panel(
-            f"[bold green]Score: {score}/100 -- SAFE[/bold green]\n\n"
-            f"No critical findings detected.\n"
-            f"Codebase is secure.",
-            title="[green]PUSH APPROVED[/green]",
-            border_style="green"
+            Align.center(
+                f"[bold green]✅ PUSH APPROVED ✅[/bold green]\n\n"
+                f"[green]Score: {score}/100 -- SAFE[/green]\n\n"
+                f"[dim]No critical findings detected.\n"
+                f"Codebase meets security standards.[/dim]"
+            ),
+            title="[bold green]SECURITY GATE -- APPROVED[/bold green]",
+            border_style="green",
+            padding=(1, 4)
         ))
 
 @cli.command()
 @click.argument('path', default='.')
 def fix(path):
     """Run auto-remediation"""
-    with console.status("[cyan]Scanning for fixable issues...[/cyan]", spinner="dots"):
+    print_banner()
+    
+    with console.status(
+        "[cyan]Scanning for fixable issues...[/cyan]",
+        spinner="dots"
+    ):
         engine = Engine(path)
         report = engine.run()
     
     if not report.findings:
-        console.print("[green]No issues found. Nothing to fix.[/green]")
+        console.print(Panel(
+            Align.center("[bold green]✅ No issues found. Nothing to fix.[/bold green]"),
+            border_style="green"
+        ))
         return
     
-    console.print(f"\n[bold]Found {len(report.findings)} fixable issues[/bold]\n")
+    console.print()
+    console.print(Rule("[bold cyan]Auto-Remediation Engine[/bold cyan]", style="cyan"))
+    console.print(f"\n[bold]Found [red]{len(report.findings)}[/red] fixable issues[/bold]\n")
     
     fixes = {
         "bcrypt": {
@@ -183,7 +317,6 @@ def fix(path):
     }
     
     import re
-    
     files_to_fix = {}
     for finding in report.findings:
         if finding.file not in files_to_fix:
@@ -212,38 +345,54 @@ def fix(path):
                         modified = new_content
             
             if applied_fixes:
-                # show diff
-                console.print(f"\n[bold cyan]File: {filepath}[/bold cyan]")
-                for fix_desc in applied_fixes:
-                    console.print(f"  [green]+[/green] {fix_desc}")
+                console.print(Panel(
+                    "\n".join([f"  [green]+[/green] {fix}" for fix in applied_fixes]),
+                    title=f"[cyan]{filepath}[/cyan]",
+                    border_style="cyan"
+                ))
                 
-                # ask confirmation
-                if click.confirm(f"\nApply {len(applied_fixes)} fix(es) to {filepath}?"):
+                if click.confirm(f"Apply fixes to {filepath}?"):
                     with open(filepath, 'w', encoding='utf-8') as f:
                         f.write(modified)
-                    console.print(f"[green]Fixed {filepath}[/green]")
+                    console.print(f"  [green]✅ Fixed {filepath}[/green]\n")
                 else:
-                    console.print(f"[yellow]Skipped {filepath}[/yellow]")
+                    console.print(f"  [yellow]⏭  Skipped {filepath}[/yellow]\n")
                     
         except Exception as e:
             console.print(f"[red]Error fixing {filepath}: {e}[/red]")
     
-    # rescan to show improvement
-    console.print("\n[cyan]Rescanning to show improvement...[/cyan]")
-    with console.status("[cyan]Rescanning...[/cyan]", spinner="dots"):
+    console.print()
+    console.print(Rule("[cyan]Rescanning...[/cyan]", style="cyan"))
+    
+    with console.status("[cyan]Verifying fixes...[/cyan]", spinner="dots"):
         engine2 = Engine(path)
         report2 = engine2.run()
     
+    style, icon, color = get_zone_style(report2.score.zone)
     console.print(Panel(
-        f"[bold green]Score after fix: {report2.score.total}/100 -- {report2.score.zone}[/bold green]\n"
-        f"Findings remaining: {len(report2.findings)}",
-        title="[green]Fix Complete[/green]",
-        border_style="green"
+        Align.center(
+            f"{icon} [bold]Score: [{color}]{report2.score.total}/100 "
+            f"-- {report2.score.zone}[/{color}][/bold] {icon}\n\n"
+            f"[dim]Findings remaining: {len(report2.findings)}[/dim]"
+        ),
+        title="[bold green]Remediation Complete[/bold green]",
+        border_style="green",
+        padding=(1, 4)
     ))
 
 @cli.command()
-def report():
+@click.argument('path', default='.')
+def watch(path):
+    """Watch for file changes and scan incrementally"""
+    print_banner()
+    console.print(f"[cyan]Watching[/cyan] [bold]{path}[/bold] for changes...")
+    console.print("[dim]Press Ctrl+C to stop[/dim]")
+
+@cli.command()
+@click.argument('path', default='.')
+def report(path):
     """Generate security report"""
+    print_banner()
     console.print("[cyan]Generating report...[/cyan]")
 
 if __name__ == '__main__':

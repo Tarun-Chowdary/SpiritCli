@@ -1,0 +1,13 @@
+{
+    "library": "jsonwebtoken",
+    "patterns": {
+        "algorithm_none": {
+            "severity": "critical",
+            "message": "JWT algorithm:none detected -- allows unsigned tokens. Anyone can forge tokens."
+        },
+        "no_expiry": {
+            "severity": "high",
+            "message": "JWT has no expiration set -- tokens never expire, increasing attack window."
+        }
+    }
+}

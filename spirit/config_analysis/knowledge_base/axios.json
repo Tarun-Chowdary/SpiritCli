@@ -1,0 +1,9 @@
+{
+    "library": "axios",
+    "patterns": {
+        "reject_unauthorized": {
+            "severity": "critical",
+            "message": "axios rejectUnauthorized:false -- TLS validation disabled. Vulnerable to MITM attacks."
+        }
+    }
+}

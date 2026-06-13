@@ -1,0 +1,19 @@
+{
+    "library": "bcrypt",
+    "methods": {
+        "hashSync": {
+            "parameter": "rounds",
+            "minimum": 10,
+            "recommended": 12,
+            "severity": "critical",
+            "message": "bcrypt rounds={value} is too low -- brute-forceable in minutes. Minimum is 10."
+        },
+        "hash": {
+            "parameter": "rounds",
+            "minimum": 10,
+            "recommended": 12,
+            "severity": "critical",
+            "message": "bcrypt rounds={value} is too low -- brute-forceable in minutes. Minimum is 10."
+        }
+    }
+}

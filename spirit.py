@@ -390,10 +390,52 @@ def watch(path):
 
 @cli.command()
 @click.argument('path', default='.')
-def report(path):
+@click.option('--json', 'export_json', is_flag=True, help='Export JSON report')
+@click.option('--html', 'export_html', is_flag=True, help='Export HTML report')
+def report(path, export_json, export_html):
     """Generate security report"""
-    print_banner()
-    console.print("[cyan]Generating report...[/cyan]")
+    import sys
+    sys.path.insert(0, 'spirit')
+    
+    from core import Engine
+    from reporting import ReportGenerator, HTMLExporter, JSONExporter
+    
+    console.print(f"[cyan]Generating report for[/cyan] [bold]{path}[/bold]...")
+    
+    engine = Engine(path)
+    scan_report = engine.run()
+    
+    generator = ReportGenerator()
+    report_data = generator.generate(scan_report, path)
+    
+    # always show terminal summary
+    score = report_data["score"]["total"]
+    zone = report_data["score"]["zone"]
+    trend = report_data["trend"]
+    
+    zone_color = "green" if zone == "SAFE" else "yellow" if zone == "WARNING" else "red"
+    trend_color = "green" if trend == "IMPROVING" else "red" if trend == "DEGRADING" else "yellow"
+    
+    console.print(f"\n[bold {zone_color}]{score}/100 — {zone}[/bold {zone_color}]")
+    console.print(f"Trend: [{trend_color}]{trend}[/{trend_color}]")
+    console.print(f"Total findings: {len(report_data['findings'])}")
+    
+    # scan history
+    console.print("\n[cyan]Scan History:[/cyan]")
+    for h in report_data["history"]:
+        h_color = "green" if h["zone"] == "SAFE" else "yellow" if h["zone"] == "WARNING" else "red"
+        console.print(f"  [{h_color}]{h['score']:>6}/100 {h['zone']:<12}[/{h_color}] {h['timestamp'][:19]}")
+    
+    # export if requested
+    if export_html:
+        exporter = HTMLExporter()
+        path_out = exporter.export(report_data)
+        console.print(f"\n[green]HTML report saved:[/green] {path_out}")
+    
+    if export_json:
+        exporter = JSONExporter()
+        path_out = exporter.export(report_data)
+        console.print(f"\n[green]JSON report saved:[/green] {path_out}")
 
 if __name__ == '__main__':
     cli()

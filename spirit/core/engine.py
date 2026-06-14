@@ -1,5 +1,6 @@
 from datetime import datetime
 from models import Finding, Dependency, Score, Report
+from scoring import cve_score
 from scoring.calculator import Calculator
 
 class Engine:
@@ -22,7 +23,6 @@ class Engine:
         cve_score, cve_findings = self._check_cves()
         self.findings.extend(cve_findings)
         
-        # compute score with real CVE data
         from scoring.calculator import Calculator
         calc = Calculator()
         score = calc.compute(
@@ -32,6 +32,20 @@ class Engine:
             freshness=100,
             phantom=100
         )
+        # phantom check
+        phantom_score, phantom_findings = self._check_phantom()
+        self.findings.extend(phantom_findings)
+
+        # update score with real phantom score
+        score = calc.compute(
+            config=self._get_config_score(),
+            cve=cve_score,
+            trust=100,
+            freshness=100,
+            phantom=phantom_score
+        )
+        # compute score with real CVE data
+        
         
         from models import Report
         from datetime import datetime
@@ -170,12 +184,23 @@ class Engine:
     )
 
     def _get_config_score(self):
-        """Convert config findings to 0-100 score"""
         if not self.findings:
             return 100.0
         
+        # these must match EXACTLY what your extractor sets as finding.library
+        config_libraries = [
+            'bcrypt', 
+            'jwt',          
+            'jsonwebtoken',  # add this
+            'axios', 
+            'mongoose',
+            'express',
+            'lodash'
+        ]
+        
         config_findings = [f for f in self.findings 
-                        if f.library in ['bcrypt', 'jwt', 'axios', 'mongoose']]
+                        if f.library in config_libraries
+                        and f.file != 'package.json']  # exclude CVE findings
         
         if not config_findings:
             return 100.0
@@ -192,3 +217,36 @@ class Engine:
                 penalty += 3
         
         return round(max(0, 100 - penalty), 1)
+    def _check_phantom(self):
+        import sys
+        sys.path.insert(0, 'spirit')
+        from phantom import PhantomDetector
+        from models import Finding
+        
+        detector = PhantomDetector()
+        result = detector.detect(self.path)
+        phantom_score = detector.compute_score(result)
+        
+        phantom_findings = []
+        
+        for pkg in result["ghost"]:
+            phantom_findings.append(Finding(
+                severity="medium",
+                library=pkg,
+                file="package.json",
+                line=0,
+                message=f"Ghost dependency — {pkg} declared but never imported",
+                fix=f"Remove {pkg} from package.json"
+            ))
+        
+        for pkg in result["undeclared"]:
+            phantom_findings.append(Finding(
+                severity="high",
+                library=pkg,
+                file="package.json",
+                line=0,
+                message=f"Undeclared import — {pkg} used in code but not declared",
+                fix=f"Add {pkg} to package.json dependencies"
+            ))
+        
+        return phantom_score, phantom_findings

@@ -1,0 +1,9 @@
+{
+    "library": "lodash",
+    "patterns": {
+        "merge_prototype": {
+            "severity": "critical",
+            "message": "lodash.merge with user input — prototype pollution vulnerability"
+        }
+    }
+}

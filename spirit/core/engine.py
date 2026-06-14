@@ -1,54 +1,60 @@
 from datetime import datetime
 from models import Finding, Dependency, Score, Report
-from scoring import cve_score
-from scoring.calculator import Calculator
 
 class Engine:
     def __init__(self, path):
         self.path = path
         self.findings = []
         self.dependencies = []
-        self.calculator = Calculator()
 
     def run(self):
         from rich.console import Console
+        from scoring import Calculator, ConfigScorer, TrustScorer, FreshnessScorer
+        from storage.database import save_scan
+        
         console = Console()
-        
+
+        # Step 1 - collect files
         files = self._collect_files()
+
+        # Step 2 - collect dependencies
         self.dependencies = self._collect_dependencies()
+
+        # Step 3 - config analysis
         self.findings = self._run_analysis(files)
-        
-        # add CVE check
+
+        # Step 4 - CVE check
         console.print("[cyan]Checking CVEs...[/cyan]")
         cve_score, cve_findings = self._check_cves()
         self.findings.extend(cve_findings)
-        
-        from scoring.calculator import Calculator
-        calc = Calculator()
-        score = calc.compute(
-            config=self._get_config_score(),
-            cve=cve_score,
-            trust=100,
-            freshness=100,
-            phantom=100
-        )
-        # phantom check
+
+        # Step 5 - phantom check
         phantom_score, phantom_findings = self._check_phantom()
         self.findings.extend(phantom_findings)
 
-        # update score with real phantom score
+        # Step 6 - compute all scores using dedicated scorers
+        config_score = ConfigScorer().compute(self.findings)
+        trust_score = TrustScorer().compute(self.dependencies)
+        freshness_score = FreshnessScorer().compute(self.dependencies)
+
+        calc = Calculator()
         score = calc.compute(
-            config=self._get_config_score(),
+            config=config_score,
             cve=cve_score,
-            trust=100,
-            freshness=100,
+            trust=trust_score,
+            freshness=freshness_score,
             phantom=phantom_score
         )
-        # compute score with real CVE data
-        
-        
-        from models import Report
-        from datetime import datetime
+
+        # Step 7 - save to database
+        save_scan(
+            path=self.path,
+            score=score.total,
+            zone=score.zone,
+            findings_count=len(self.findings)
+        )
+
+        # Step 8 - build and return report
         report = Report(
             scan_path=self.path,
             findings=self.findings,
@@ -56,13 +62,7 @@ class Engine:
             score=score,
             timestamp=datetime.now().isoformat()
         )
-        from storage.database import save_scan, save_vulnerabilities
-        save_scan(
-            path=self.path,
-            score=score.total,
-            zone=score.zone,
-            findings_count=len(self.findings)
-        )
+
         return report
 
     def _collect_files(self):
@@ -99,57 +99,20 @@ class Engine:
                     if line and not line.startswith('#'):
                         if '==' in line:
                             name, version = line.split('==')
-                            deps.append(Dependency(name=name.strip(),
-                                                  version=version.strip()))
+                            deps.append(Dependency(
+                                name=name.strip(),
+                                version=version.strip()
+                            ))
                         else:
-                            deps.append(Dependency(name=line, version='unknown'))
+                            deps.append(Dependency(
+                                name=line,
+                                version='unknown'
+                            ))
 
         return deps
-    def _check_cves(self):
-        from integrations.osv import OSVClient, fetch_vulnerabilities
-        from scoring.cve_score import CVEScorer
-        from storage.database import save_vulnerabilities
-        
-        client = OSVClient()
-        scorer = CVEScorer()
-        
-        scores = []
-        cve_findings = []
-        
-        for dep in self.dependencies:
-            ecosystem = "npm"
-            result = client.query(dep.name, dep.version.lstrip('^~'), ecosystem)
-            summary = client.get_cve_summary(result)
-            
-            dep_score = scorer.compute(summary)
-            scores.append(dep_score)
-            
-            if summary["count"] > 0:
-                # save to vulnerabilities table
-                vuln_list = [
-                    {"cve_id": cve_id, "severity": "HIGH", "description": f"{dep.name} vulnerability"}
-                    for cve_id in summary["ids"]
-                ]
-                save_vulnerabilities(dep.name, dep.version.lstrip('^~'), vuln_list)
-                
-                from models import Finding
-                severity = "critical" if summary["critical"] > 0 else "high"
-                for cve_id in summary["ids"][:2]:
-                    cve_findings.append(Finding(
-                        severity=severity,
-                        library=dep.name,
-                        file="package.json",
-                        line=0,
-                        message=f"{cve_id} — {dep.name}@{dep.version}",
-                        fix=f"Upgrade {dep.name} to latest version"
-                    ))
-        
-        final_cve_score = round(sum(scores) / len(scores), 1) if scores else 100.0
-        return final_cve_score, cve_findings
 
     def _run_analysis(self, files):
         findings = []
-
         from ast_engine.extractors import JSExtractor
         from config_analysis import ConfigAnalyzer
 
@@ -160,81 +123,73 @@ class Engine:
             try:
                 with open(filepath, 'r', encoding='utf-8') as f:
                     source = f.read()
-
                 configs = extractor.extract_all(source, filepath)
                 file_findings = analyzer.analyze_file(filepath, configs)
                 findings.extend(file_findings)
-
-            except Exception as e:
+            except Exception:
                 pass
 
         return findings
 
-    def _compute_score(self):
-        critical = sum(1 for f in self.findings if f.severity == "critical")
-        high = sum(1 for f in self.findings if f.severity == "high")
-        medium = sum(1 for f in self.findings if f.severity == "medium")
+    def _check_cves(self):
+        from integrations.osv import OSVClient
+        from scoring.cve_score import CVEScorer
+        from storage.database import save_vulnerabilities
 
-        config_score = 100.0
-        config_score -= critical * 35
-        config_score -= high * 15
-        config_score -= medium * 7
-        config_score = max(0, config_score)
+        client = OSVClient()
+        scorer = CVEScorer()
+        scores = []
+        cve_findings = []
 
-        return self.calculator.compute(
-            config=config_score,
-            cve=100,
-            trust=100,
-            freshness=100,
-            phantom=100
-    )
+        for dep in self.dependencies:
+            result = client.query(
+                dep.name,
+                dep.version.lstrip('^~'),
+                "npm"
+            )
+            summary = client.get_cve_summary(result)
+            dep_score = scorer.compute(summary)
+            scores.append(dep_score)
 
-    def _get_config_score(self):
-        if not self.findings:
-            return 100.0
-        
-        # these must match EXACTLY what your extractor sets as finding.library
-        config_libraries = [
-            'bcrypt', 
-            'jwt',          
-            'jsonwebtoken',  # add this
-            'axios', 
-            'mongoose',
-            'express',
-            'lodash'
-        ]
-        
-        config_findings = [f for f in self.findings 
-                        if f.library in config_libraries
-                        and f.file != 'package.json']  # exclude CVE findings
-        
-        if not config_findings:
-            return 100.0
-        
-        penalty = 0
-        for f in config_findings:
-            if f.severity == "critical":
-                penalty += 25
-            elif f.severity == "high":
-                penalty += 15
-            elif f.severity == "medium":
-                penalty += 8
-            elif f.severity == "low":
-                penalty += 3
-        
-        return round(max(0, 100 - penalty), 1)
+            if summary["count"] > 0:
+                vuln_list = [
+                    {
+                        "cve_id": cve_id,
+                        "severity": "HIGH",
+                        "description": f"{dep.name} vulnerability"
+                    }
+                    for cve_id in summary["ids"]
+                ]
+                save_vulnerabilities(
+                    dep.name,
+                    dep.version.lstrip('^~'),
+                    vuln_list
+                )
+
+                severity = "critical" if summary["critical"] > 0 else "high"
+                for cve_id in summary["ids"][:2]:
+                    cve_findings.append(Finding(
+                        severity=severity,
+                        library=dep.name,
+                        file="package.json",
+                        line=0,
+                        message=f"{cve_id} — {dep.name}@{dep.version}",
+                        fix=f"Upgrade {dep.name} to latest version"
+                    ))
+
+        final_cve_score = round(
+            sum(scores) / len(scores), 1
+        ) if scores else 100.0
+        return final_cve_score, cve_findings
+
     def _check_phantom(self):
-        import sys
-        sys.path.insert(0, 'spirit')
         from phantom import PhantomDetector
-        from models import Finding
-        
+
         detector = PhantomDetector()
         result = detector.detect(self.path)
         phantom_score = detector.compute_score(result)
-        
         phantom_findings = []
-        
+
         for pkg in result["ghost"]:
             phantom_findings.append(Finding(
                 severity="medium",
@@ -244,7 +199,7 @@ class Engine:
                 message=f"Ghost dependency — {pkg} declared but never imported",
                 fix=f"Remove {pkg} from package.json"
             ))
-        
+
         for pkg in result["undeclared"]:
             phantom_findings.append(Finding(
                 severity="high",
@@ -254,5 +209,5 @@ class Engine:
                 message=f"Undeclared import — {pkg} used in code but not declared",
                 fix=f"Add {pkg} to package.json dependencies"
             ))
-        
+
         return phantom_score, phantom_findings

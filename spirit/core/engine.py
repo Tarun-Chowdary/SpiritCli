@@ -106,8 +106,9 @@ class Engine:
 
         return deps
     def _check_cves(self):
-        from integrations.osv import OSVClient
+        from integrations.osv import OSVClient, fetch_vulnerabilities
         from scoring.cve_score import CVEScorer
+        from storage.database import save_vulnerabilities
         
         client = OSVClient()
         scorer = CVEScorer()
@@ -124,9 +125,15 @@ class Engine:
             scores.append(dep_score)
             
             if summary["count"] > 0:
+                # save to vulnerabilities table
+                vuln_list = [
+                    {"cve_id": cve_id, "severity": "HIGH", "description": f"{dep.name} vulnerability"}
+                    for cve_id in summary["ids"]
+                ]
+                save_vulnerabilities(dep.name, dep.version.lstrip('^~'), vuln_list)
+                
                 from models import Finding
                 severity = "critical" if summary["critical"] > 0 else "high"
-                # only show top 2 CVEs per package to avoid noise
                 for cve_id in summary["ids"][:2]:
                     cve_findings.append(Finding(
                         severity=severity,
@@ -137,7 +144,6 @@ class Engine:
                         fix=f"Upgrade {dep.name} to latest version"
                     ))
         
-        # average across all packages
         final_cve_score = round(sum(scores) / len(scores), 1) if scores else 100.0
         return final_cve_score, cve_findings
 

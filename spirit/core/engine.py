@@ -10,17 +10,31 @@ class Engine:
         self.calculator = Calculator()
 
     def run(self):
-        
+        from rich.console import Console
+        console = Console()
         
         files = self._collect_files()
-        
-
         self.dependencies = self._collect_dependencies()
-        
         self.findings = self._run_analysis(files)
         
-        score = self._compute_score()
-
+        # add CVE check
+        console.print("[cyan]Checking CVEs...[/cyan]")
+        cve_score, cve_findings = self._check_cves()
+        self.findings.extend(cve_findings)
+        
+        # compute score with real CVE data
+        from scoring.calculator import Calculator
+        calc = Calculator()
+        score = calc.compute(
+            config=self._get_config_score(),
+            cve=cve_score,
+            trust=100,
+            freshness=100,
+            phantom=100
+        )
+        
+        from models import Report
+        from datetime import datetime
         report = Report(
             scan_path=self.path,
             findings=self.findings,
@@ -28,7 +42,13 @@ class Engine:
             score=score,
             timestamp=datetime.now().isoformat()
         )
-
+        from storage.database import save_scan, save_vulnerabilities
+        save_scan(
+            path=self.path,
+            score=score.total,
+            zone=score.zone,
+            findings_count=len(self.findings)
+        )
         return report
 
     def _collect_files(self):
@@ -71,6 +91,41 @@ class Engine:
                             deps.append(Dependency(name=line, version='unknown'))
 
         return deps
+    def _check_cves(self):
+        from integrations.osv import OSVClient
+        from scoring.cve_score import CVEScorer
+        
+        client = OSVClient()
+        scorer = CVEScorer()
+        
+        scores = []
+        cve_findings = []
+        
+        for dep in self.dependencies:
+            ecosystem = "npm"
+            result = client.query(dep.name, dep.version.lstrip('^~'), ecosystem)
+            summary = client.get_cve_summary(result)
+            
+            dep_score = scorer.compute(summary)
+            scores.append(dep_score)
+            
+            if summary["count"] > 0:
+                from models import Finding
+                severity = "critical" if summary["critical"] > 0 else "high"
+                # only show top 2 CVEs per package to avoid noise
+                for cve_id in summary["ids"][:2]:
+                    cve_findings.append(Finding(
+                        severity=severity,
+                        library=dep.name,
+                        file="package.json",
+                        line=0,
+                        message=f"{cve_id} — {dep.name}@{dep.version}",
+                        fix=f"Upgrade {dep.name} to latest version"
+                    ))
+        
+        # average across all packages
+        final_cve_score = round(sum(scores) / len(scores), 1) if scores else 100.0
+        return final_cve_score, cve_findings
 
     def _run_analysis(self, files):
         findings = []
@@ -113,3 +168,27 @@ class Engine:
             freshness=100,
             phantom=100
     )
+
+    def _get_config_score(self):
+        """Convert config findings to 0-100 score"""
+        if not self.findings:
+            return 100.0
+        
+        config_findings = [f for f in self.findings 
+                        if f.library in ['bcrypt', 'jwt', 'axios', 'mongoose']]
+        
+        if not config_findings:
+            return 100.0
+        
+        penalty = 0
+        for f in config_findings:
+            if f.severity == "critical":
+                penalty += 25
+            elif f.severity == "high":
+                penalty += 15
+            elif f.severity == "medium":
+                penalty += 8
+            elif f.severity == "low":
+                penalty += 3
+        
+        return round(max(0, 100 - penalty), 1)

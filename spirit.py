@@ -11,14 +11,12 @@ from watchdog.events import FileSystemEventHandler
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
-from rich.text import Text
 from rich.align import Align
 from rich import box
 from rich.rule import Rule
 from rich.columns import Columns
 from core import Engine
-
-
+from git.audit_log import log_push_attempt
 
 console = Console()
 
@@ -49,47 +47,17 @@ def get_zone_style(zone):
 
 def display_score(score):
     style, icon, color = get_zone_style(score.zone)
-    
     panels = [
-        Panel(
-            f"[bold]{score.config_score}/100[/bold]",
-            title="[cyan]Config Safety[/cyan]",
-            border_style="cyan",
-            width=20
-        ),
-        Panel(
-            f"[bold]{score.cve_score}/100[/bold]",
-            title="[cyan]CVE Exposure[/cyan]",
-            border_style="cyan",
-            width=20
-        ),
-        Panel(
-            f"[bold]{score.trust_score}/100[/bold]",
-            title="[cyan]Trust Score[/cyan]",
-            border_style="cyan",
-            width=20
-        ),
-        Panel(
-            f"[bold]{score.freshness_score}/100[/bold]",
-            title="[cyan]Freshness[/cyan]",
-            border_style="cyan",
-            width=20
-        ),
-        Panel(
-            f"[bold]{score.phantom_score}/100[/bold]",
-            title="[cyan]Phantom Risk[/cyan]",
-            border_style="cyan",
-            width=20
-        ),
+        Panel(f"[bold]{score.config_score}/100[/bold]", title="[cyan]Config Safety[/cyan]", border_style="cyan", width=20),
+        Panel(f"[bold]{score.cve_score}/100[/bold]", title="[cyan]CVE Exposure[/cyan]", border_style="cyan", width=20),
+        Panel(f"[bold]{score.trust_score}/100[/bold]", title="[cyan]Trust Score[/cyan]", border_style="cyan", width=20),
+        Panel(f"[bold]{score.freshness_score}/100[/bold]", title="[cyan]Freshness[/cyan]", border_style="cyan", width=20),
+        Panel(f"[bold]{score.phantom_score}/100[/bold]", title="[cyan]Phantom Risk[/cyan]", border_style="cyan", width=20),
     ]
-    
     console.print(Columns(panels, equal=True, expand=True))
     console.print()
-    
     console.print(Panel(
-        Align.center(
-            f"[{style}]{icon} {score.total}/100 -- {score.zone} {icon}[/{style}]"
-        ),
+        Align.center(f"[{style}]{icon} {score.total}/100 -- {score.zone} {icon}[/{style}]"),
         title="[bold white]Security Fingerprint[/bold white]",
         border_style=color,
         padding=(1, 4)
@@ -102,34 +70,23 @@ def display_findings(findings):
             border_style="green"
         ))
         return
-    
     console.print()
     console.print(Rule("[bold red]Security Findings[/bold red]", style="red"))
     console.print()
-    
-    table = Table(
-        box=box.ROUNDED,
-        show_header=True,
-        header_style="bold cyan",
-        border_style="cyan",
-        row_styles=["", "dim"],
-        padding=(0, 1)
-    )
-    
+    table = Table(box=box.ROUNDED, show_header=True, header_style="bold cyan",
+                  border_style="cyan", row_styles=["", "dim"], padding=(0, 1))
     table.add_column("Severity", width=12)
     table.add_column("Library", width=14)
     table.add_column("File", width=35)
     table.add_column("Line", width=6, justify="center")
     table.add_column("Issue", width=50)
     table.add_column("Fix", width=35)
-    
     severity_styles = {
         "critical": ("red", "🔴 CRITICAL"),
         "high":     ("orange3", "🟠 HIGH"),
         "medium":   ("yellow", "🟡 MEDIUM"),
         "low":      ("blue", "🔵 LOW")
     }
-    
     for f in findings:
         color, label = severity_styles.get(f.severity, ("white", f.severity.upper()))
         table.add_row(
@@ -140,18 +97,10 @@ def display_findings(findings):
             f.message,
             f"[green]{f.fix or 'Review manually'}[/green]"
         )
-    
     console.print(table)
 
 def run_git_command(args, cwd=None):
-    """Helper to run git commands in correct directory"""
-    result = subprocess.run(
-        args,
-        cwd=cwd,
-        capture_output=True,
-        text=True
-    )
-    return result
+    return subprocess.run(args, cwd=cwd, capture_output=True, text=True)
 
 @click.group()
 def cli():
@@ -165,26 +114,16 @@ def scan(path):
     print_banner()
     console.print(f"\n[cyan]Target:[/cyan] [bold]{path}[/bold]")
     console.print()
-    
-    with console.status(
-        "[cyan]Scanning dependencies and configurations...[/cyan]",
-        spinner="dots"
-    ):
+    with console.status("[cyan]Scanning dependencies and configurations...[/cyan]", spinner="dots"):
         engine = Engine(path)
         report = engine.run()
-    
     console.print(f"[dim]Scanned {len(report.dependencies)} dependencies[/dim]")
     console.print()
-    
     display_score(report.score)
     display_findings(report.findings)
-    
     console.print()
     console.print(Rule(style="cyan"))
-    console.print(
-        f"[dim]Scan complete -- {report.timestamp}[/dim]",
-        justify="center"
-    )
+    console.print(f"[dim]Scan complete -- {report.timestamp}[/dim]", justify="center")
 
 @cli.command()
 @click.argument('path', default='.')
@@ -193,7 +132,6 @@ def scan(path):
 def push(path, message, force):
     """Security-gated git add, commit and push"""
     print_banner()
-
     abs_path = os.path.abspath(path)
 
     # ── FORCE PUSH ──────────────────────────────────────────
@@ -212,16 +150,26 @@ def push(path, message, force):
 
         try:
             subprocess.run(['git', 'add', '.'], cwd=abs_path, check=True)
-            subprocess.run(['git', 'commit', '-m', message], cwd=abs_path, check=True)
+
+            # check if anything to commit
+            status = run_git_command(['git', 'status', '--porcelain'], cwd=abs_path)
+            if status.stdout.strip():
+                subprocess.run(['git', 'commit', '-m', message], cwd=abs_path, check=True)
+            else:
+                console.print("[dim]Nothing to commit — skipping commit step[/dim]")
+
             result = run_git_command(['git', 'push', '--force'], cwd=abs_path)
 
             if result.returncode == 0:
                 console.print("[yellow]⚠ Force push successful — security was bypassed[/yellow]")
                 console.print("[yellow]This action has been logged for audit.[/yellow]")
-                from storage.database import log_force_push
-                log_force_push(abs_path, message)
+                log_push_attempt(abs_path, 0, "FORCE_PUSH", "FORCE_PUSH", message)
+            elif "No configured push destination" in result.stderr:
+                console.print("[yellow]⚠ Committed — no remote configured to push[/yellow]")
+                log_push_attempt(abs_path, 0, "FORCE_PUSH", "FORCE_PUSH", message)
             else:
                 console.print(f"[red]Push failed: {result.stderr}[/red]")
+
         except subprocess.CalledProcessError as e:
             console.print(f"[red]Git error: {e}[/red]")
         return
@@ -239,19 +187,16 @@ def push(path, message, force):
 
     # ── SECURITY SCAN ───────────────────────────────────────
     console.print(f"\n[cyan]Running security scan on[/cyan] [bold]{path}[/bold]...")
-    
     with console.status("[cyan]Scanning...[/cyan]", spinner="dots"):
         engine = Engine(abs_path)
         report = engine.run()
 
     score = report.score.total
     zone = report.score.zone
-
     critical_findings = [
         f for f in report.findings
         if f.severity == "critical" and f.file != "package.json"
     ]
-
     display_score(report.score)
 
     # ── QUARANTINE — HARD BLOCK ─────────────────────────────
@@ -271,6 +216,7 @@ def push(path, message, force):
         console.print("\n[red]Critical Findings:[/red]")
         for f in critical_findings:
             console.print(f"  [red]●[/red] [bold]{f.library}[/bold] — {f.message}")
+        log_push_attempt(abs_path, score, zone, "BLOCKED")
         return
 
     # ── WARNING — ACKNOWLEDGEMENT REQUIRED ──────────────────
@@ -285,7 +231,6 @@ def push(path, message, force):
             border_style="yellow",
             padding=(1, 4)
         ))
-
         console.print("\n[yellow]Active Findings:[/yellow]")
         for f in report.findings[:5]:
             console.print(f"  [yellow]●[/yellow] [bold]{f.library}[/bold] — {f.message[:70]}")
@@ -297,8 +242,8 @@ def push(path, message, force):
         if not confirmed:
             console.print("[red]Push cancelled.[/red]")
             console.print(f"[yellow]Tip: Run [cyan]spirit fix {path}[/cyan] to fix issues first[/yellow]")
+            log_push_attempt(abs_path, score, zone, "CANCELLED")
             return
-
         console.print("[yellow]Push proceeding with acknowledged risk.[/yellow]")
 
     # ── SAFE — PROCEED ──────────────────────────────────────
@@ -322,19 +267,36 @@ def push(path, message, force):
         console.print("\n[cyan]Running git add .[/cyan]")
         subprocess.run(['git', 'add', '.'], cwd=abs_path, check=True)
 
-        console.print(f"[cyan]Committing: {message}[/cyan]")
-        subprocess.run(['git', 'commit', '-m', message], cwd=abs_path, check=True)
+        # check if anything to commit
+        status = run_git_command(['git', 'status', '--porcelain'], cwd=abs_path)
+        if status.stdout.strip():
+            console.print(f"[cyan]Committing: {message}[/cyan]")
+            subprocess.run(['git', 'commit', '-m', message], cwd=abs_path, check=True)
+        else:
+            console.print("[dim]Nothing new to commit[/dim]")
 
         console.print("[cyan]Pushing to remote...[/cyan]")
         result = run_git_command(['git', 'push'], cwd=abs_path)
 
         if result.returncode == 0:
+            log_push_attempt(abs_path, score, zone, "APPROVED", message)
             console.print(Panel(
                 Align.center(
                     f"[bold green]✅ Push Successful[/bold green]\n\n"
                     f"[green]Score: {score}/100 — {zone}[/green]"
                 ),
                 border_style="green",
+                padding=(1, 4)
+            ))
+        elif "No configured push destination" in result.stderr:
+            log_push_attempt(abs_path, score, zone, "APPROVED", message)
+            console.print(Panel(
+                Align.center(
+                    f"[bold yellow]✅ Committed Successfully[/bold yellow]\n\n"
+                    f"[yellow]Score: {score}/100 — {zone}[/yellow]\n\n"
+                    f"[dim]No remote configured — add with: git remote add origin <url>[/dim]"
+                ),
+                border_style="yellow",
                 padding=(1, 4)
             ))
         else:
@@ -348,15 +310,10 @@ def push(path, message, force):
 def fix(path):
     """Run auto-remediation"""
     print_banner()
-
-    with console.status(
-        "[cyan]Scanning for fixable issues...[/cyan]",
-        spinner="dots"
-    ):
+    with console.status("[cyan]Scanning for fixable issues...[/cyan]", spinner="dots"):
         engine = Engine(path)
         report = engine.run()
 
-    # filter only config findings that are fixable
     fixable = [
         f for f in report.findings
         if f.library in ['bcrypt', 'jwt', 'axios']
@@ -378,18 +335,15 @@ def fix(path):
     console.print(Rule("[bold cyan]Auto-Remediation Engine[/bold cyan]", style="cyan"))
     console.print(f"\n[bold]Found [red]{len(fixable)}[/red] fixable issues[/bold]\n")
 
-    # fix rules — multiple patterns per library for robustness
     fix_rules = {
         "bcrypt": [
             {
-                # handles: hashSync(pwd, 4) hashSync(password, 4) hashSync(x, 4)
                 "pattern": r'(\.hashSync\s*\([^,]+,\s*)([0-9]+)(\s*\))',
                 "replacement": r'\g<1>12\g<3>',
                 "description": "bcrypt rounds → 12",
                 "validate": lambda old, new: "12" in new
             },
             {
-                # handles: hash(pwd, 4)
                 "pattern": r'(\.hash\s*\([^,]+,\s*)([0-9]+)(\s*[,)])',
                 "replacement": r'\g<1>12\g<3>',
                 "description": "bcrypt hash rounds → 12",
@@ -398,14 +352,12 @@ def fix(path):
         ],
         "jwt": [
             {
-                # handles: algorithm: "none" algorithm: 'none' algorithm:"none"
                 "pattern": r'algorithm\s*:\s*["\']none["\']',
                 "replacement": "algorithm: 'HS256'",
                 "description": "JWT algorithm → HS256",
                 "validate": lambda old, new: "HS256" in new
             },
             {
-                # handles: algorithm: `none`
                 "pattern": r'algorithm\s*:\s*`none`',
                 "replacement": "algorithm: 'HS256'",
                 "description": "JWT algorithm → HS256",
@@ -414,14 +366,12 @@ def fix(path):
         ],
         "axios": [
             {
-                # handles: rejectUnauthorized: false rejectUnauthorized:false
                 "pattern": r'rejectUnauthorized\s*:\s*false',
                 "replacement": "rejectUnauthorized: true",
                 "description": "axios TLS validation → enabled",
                 "validate": lambda old, new: "rejectUnauthorized: true" in new
             },
             {
-                # handles: NODE_TLS_REJECT_UNAUTHORIZED = "0"
                 "pattern": r'NODE_TLS_REJECT_UNAUTHORIZED\s*=\s*["\']0["\']',
                 "replacement": 'NODE_TLS_REJECT_UNAUTHORIZED = "1"',
                 "description": "TLS rejection → enabled",
@@ -430,7 +380,6 @@ def fix(path):
         ]
     }
 
-    # group findings by file
     files_to_fix = {}
     for finding in fixable:
         if finding.file not in files_to_fix:
@@ -443,7 +392,6 @@ def fix(path):
 
     for filepath, findings in files_to_fix.items():
         try:
-            # read file
             with open(filepath, 'r', encoding='utf-8') as f:
                 original = f.read()
 
@@ -456,80 +404,51 @@ def fix(path):
                 if lib not in fix_rules:
                     continue
 
-                rules = fix_rules[lib]
                 fix_applied = False
-
-                for rule in rules:
+                for rule in fix_rules[lib]:
                     try:
                         new_content = re.sub(
-                            rule["pattern"],
-                            rule["replacement"],
-                            modified,
-                            flags=re.IGNORECASE
+                            rule["pattern"], rule["replacement"],
+                            modified, flags=re.IGNORECASE
                         )
-
                         if new_content != modified:
-                            # validate the fix worked correctly
                             if rule["validate"](modified, new_content):
                                 applied_fixes.append(rule["description"])
                                 modified = new_content
                                 fix_applied = True
                                 break
                             else:
-                                failed_fixes.append(
-                                    f"{lib} — validation failed after fix"
-                                )
+                                failed_fixes.append(f"{lib} — validation failed after fix")
                     except re.error as e:
                         failed_fixes.append(f"{lib} — regex error: {e}")
 
                 if not fix_applied and lib in fix_rules:
-                    failed_fixes.append(
-                        f"{lib} — pattern not matched in file "
-                        f"(may need manual fix)"
-                    )
+                    failed_fixes.append(f"{lib} — pattern not matched (may need manual fix)")
 
-            # show what will be changed
             if applied_fixes or failed_fixes:
                 content_lines = []
-
                 if applied_fixes:
                     content_lines.append("[green]Fixes to apply:[/green]")
                     for fix in applied_fixes:
                         content_lines.append(f"  [green]+[/green] {fix}")
-
                 if failed_fixes:
                     content_lines.append("")
                     content_lines.append("[yellow]Could not auto-fix:[/yellow]")
                     for fail in failed_fixes:
                         content_lines.append(f"  [yellow]![/yellow] {fail}")
+                console.print(Panel("\n".join(content_lines), title=f"[cyan]{filepath}[/cyan]", border_style="cyan"))
 
-                console.print(Panel(
-                    "\n".join(content_lines),
-                    title=f"[cyan]{filepath}[/cyan]",
-                    border_style="cyan"
-                ))
-
-            # only ask to apply if there are actual fixes
             if applied_fixes:
                 if click.confirm(f"Apply {len(applied_fixes)} fix(es) to {filepath}?"):
-                    # backup original file
                     backup_path = filepath + ".spirit.bak"
                     with open(backup_path, 'w', encoding='utf-8') as f:
                         f.write(original)
-
-                    # write fixed file
                     with open(filepath, 'w', encoding='utf-8') as f:
                         f.write(modified)
-
-                    console.print(
-                        f"  [green]✅ Fixed {filepath}[/green] "
-                        f"[dim](backup: {backup_path})[/dim]\n"
-                    )
+                    console.print(f"  [green]✅ Fixed {filepath}[/green] [dim](backup: {backup_path})[/dim]\n")
                     total_fixed += len(applied_fixes)
                 else:
-                    console.print(
-                        f"  [yellow]⏭ Skipped {filepath}[/yellow]\n"
-                    )
+                    console.print(f"  [yellow]⏭ Skipped {filepath}[/yellow]\n")
                     total_skipped += len(applied_fixes)
 
             if failed_fixes:
@@ -545,7 +464,6 @@ def fix(path):
             console.print(f"[red]Unexpected error fixing {filepath}: {e}[/red]")
             total_failed += 1
 
-    # summary
     console.print()
     console.print(Panel(
         f"[green]Fixed: {total_fixed}[/green]   "
@@ -555,15 +473,12 @@ def fix(path):
         border_style="cyan"
     ))
 
-    # rescan to verify
     if total_fixed > 0:
         console.print()
         console.print(Rule("[cyan]Rescanning...[/cyan]", style="cyan"))
-
         with console.status("[cyan]Verifying fixes...[/cyan]", spinner="dots"):
             engine2 = Engine(path)
             report2 = engine2.run()
-
         style, icon, color = get_zone_style(report2.score.zone)
         console.print(Panel(
             Align.center(
@@ -577,11 +492,7 @@ def fix(path):
             padding=(1, 4)
         ))
     else:
-        console.print(
-            "[yellow]No fixes were applied. "
-            "Review failed fixes manually.[/yellow]"
-        )
-
+        console.print("[yellow]No fixes were applied. Review failed fixes manually.[/yellow]")
 
 @cli.command()
 @click.argument('path', default='.')
@@ -606,7 +517,6 @@ def watch(path):
 
             self.save_count += 1
             remaining = 5 - self.save_count
-            
             console.print(
                 f"[dim]Save detected ({self.save_count}/5) — "
                 f"{remaining} more save(s) until next scan[/dim]"
@@ -615,20 +525,15 @@ def watch(path):
             if self.save_count >= 5:
                 self.scanning = True
                 self.save_count = 0
-                
                 console.print(f"\n[cyan]5 saves reached — scanning...[/cyan]")
-                
                 with console.status("[cyan]Rescanning...[/cyan]", spinner="dots"):
                     engine = Engine(path)
                     report = engine.run()
-                
                 display_score(report.score)
-                
                 if report.findings:
                     console.print(f"[yellow]⚠ {len(report.findings)} findings[/yellow]")
                 else:
                     console.print("[green]✅ No findings[/green]")
-                
                 console.print(Rule(style="dim"))
                 console.print("[dim]Watching again — next scan after 5 saves[/dim]\n")
                 self.scanning = False
@@ -636,7 +541,6 @@ def watch(path):
     observer = Observer()
     observer.schedule(SpiritWatcher(), path, recursive=True)
     observer.start()
-
     try:
         while True:
             time.sleep(1)
@@ -655,7 +559,6 @@ def report(path, export_json, export_html):
     from reporting import ReportGenerator, HTMLExporter, JSONExporter
 
     console.print(f"[cyan]Generating report for[/cyan] [bold]{path}[/bold]...")
-
     with console.status("[cyan]Scanning...[/cyan]", spinner="dots"):
         engine = Engine(path)
         scan_report = engine.run()
@@ -663,15 +566,10 @@ def report(path, export_json, export_html):
     generator = ReportGenerator()
     report_data = generator.generate(scan_report, path)
 
-    score = report_data["score"]["total"]
-    zone = report_data["score"]["zone"]
     trend = report_data["trend"]
-
-    zone_color = "green" if zone == "SAFE" else "yellow" if zone == "WARNING" else "red"
     trend_color = "green" if trend == "IMPROVING" else "red" if trend == "DEGRADING" else "yellow"
 
     display_score(scan_report.score)
-
     console.print(f"\nTrend: [{trend_color}]{trend}[/{trend_color}]")
     console.print(f"Total findings: {len(report_data['findings'])}")
 
@@ -707,8 +605,6 @@ def install_hooks(path):
     hooks_dir = os.path.join(git_dir, 'hooks')
     os.makedirs(hooks_dir, exist_ok=True)
     hook_path = os.path.join(hooks_dir, 'pre-push')
-
-    # get absolute path to spirit.py
     spirit_py = os.path.abspath('spirit.py')
 
     hook_content = f"""#!/bin/sh
@@ -722,10 +618,8 @@ fi
 echo "SpiritCLI: Security check passed. Proceeding with push."
 exit 0
 """
-
     with open(hook_path, 'w') as f:
         f.write(hook_content)
-
     try:
         os.chmod(hook_path, 0o755)
     except Exception:
@@ -740,6 +634,83 @@ exit 0
         border_style="green",
         padding=(1, 2)
     ))
+
+@cli.command()
+@click.argument('path', default='.')
+@click.option('--all', 'show_all', is_flag=True, help='Show all paths')
+def audit(path, show_all):
+    """Show push audit trail"""
+    print_banner()
+    from git.audit_log import get_audit_log, get_audit_summary
+
+    target = None if show_all else os.path.abspath(path)
+    logs = get_audit_log(path=target, limit=20)
+    summary = get_audit_summary(path=target)
+
+    if not logs:
+        console.print("[yellow]No audit records found. Run spirit push first.[/yellow]")
+        return
+
+    approved = summary.get("APPROVED", 0)
+    blocked = summary.get("BLOCKED", 0)
+    force = summary.get("FORCE_PUSH", 0)
+    warned = summary.get("WARNING_ACCEPTED", 0)
+    cancelled = summary.get("CANCELLED", 0)
+
+    console.print(Panel(
+        f"[green]Approved: {approved}[/green]   "
+        f"[yellow]Warned: {warned}[/yellow]   "
+        f"[red]Blocked: {blocked}[/red]   "
+        f"[red]Force Push: {force}[/red]   "
+        f"[dim]Cancelled: {cancelled}[/dim]",
+        title="[cyan]Push Audit Summary[/cyan]",
+        border_style="cyan"
+    ))
+    console.print()
+
+    table = Table(box=box.ROUNDED, show_header=True,
+                  header_style="bold cyan", border_style="cyan")
+    table.add_column("Timestamp", width=20)
+    table.add_column("Score", width=10)
+    table.add_column("Zone", width=12)
+    table.add_column("Action", width=18)
+    table.add_column("User", width=12)
+    table.add_column("Message", width=30)
+
+    action_colors = {
+        "APPROVED": "green",
+        "WARNING_ACCEPTED": "yellow",
+        "BLOCKED": "red",
+        "FORCE_PUSH": "red",
+        "CANCELLED": "dim"
+    }
+    zone_colors = {
+        "SAFE": "green",
+        "WARNING": "yellow",
+        "QUARANTINE": "red",
+        "FORCE_PUSH": "red"
+    }
+
+    for row in logs:
+        path_val, score, zone, action, message, user, timestamp = row
+        action_color = action_colors.get(action, "white")
+        zone_color = zone_colors.get(zone, "white")
+        table.add_row(
+            f"[dim]{timestamp[:19]}[/dim]",
+            f"[bold]{score}/100[/bold]",
+            f"[{zone_color}]{zone}[/{zone_color}]",
+            f"[{action_color}]{action}[/{action_color}]",
+            f"[dim]{user}[/dim]",
+            f"[dim]{message[:30] if message else '—'}[/dim]"
+        )
+
+    console.print(table)
+
+    if force > 0:
+        console.print(
+            f"\n[red]⚠ {force} force push(es) detected — "
+            f"security was bypassed[/red]"
+        )
 
 if __name__ == '__main__':
     cli()

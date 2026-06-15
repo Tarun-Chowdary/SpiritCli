@@ -7,3 +7,4 @@ watchdog
 gitpython
 requests
 jinja2
+pytest

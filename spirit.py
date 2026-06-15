@@ -3,6 +3,11 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'spirit'))
 
 import click
+import subprocess
+import re
+import time
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
@@ -12,6 +17,8 @@ from rich import box
 from rich.rule import Rule
 from rich.columns import Columns
 from core import Engine
+
+
 
 console = Console()
 
@@ -43,7 +50,6 @@ def get_zone_style(zone):
 def display_score(score):
     style, icon, color = get_zone_style(score.zone)
     
-    # score breakdown panels
     panels = [
         Panel(
             f"[bold]{score.config_score}/100[/bold]",
@@ -80,7 +86,6 @@ def display_score(score):
     console.print(Columns(panels, equal=True, expand=True))
     console.print()
     
-    # main score
     console.print(Panel(
         Align.center(
             f"[{style}]{icon} {score.total}/100 -- {score.zone} {icon}[/{style}]"
@@ -111,7 +116,7 @@ def display_findings(findings):
         padding=(0, 1)
     )
     
-    table.add_column("  Severity", width=12)
+    table.add_column("Severity", width=12)
     table.add_column("Library", width=14)
     table.add_column("File", width=35)
     table.add_column("Line", width=6, justify="center")
@@ -138,6 +143,16 @@ def display_findings(findings):
     
     console.print(table)
 
+def run_git_command(args, cwd=None):
+    """Helper to run git commands in correct directory"""
+    result = subprocess.run(
+        args,
+        cwd=cwd,
+        capture_output=True,
+        text=True
+    )
+    return result
+
 @click.group()
 def cli():
     """SpiritCLI -- Real-Time Dependency Security Intelligence"""
@@ -148,7 +163,6 @@ def cli():
 def scan(path):
     """Run a full security scan"""
     print_banner()
-    
     console.print(f"\n[cyan]Target:[/cyan] [bold]{path}[/bold]")
     console.print()
     
@@ -178,232 +192,396 @@ def scan(path):
 @click.option('--force', '-f', is_flag=True, help='Force push bypassing security gate')
 def push(path, message, force):
     """Security-gated git add, commit and push"""
-    import sys
-    import os
-    sys.path.insert(0, 'spirit')
-    
-    from core import Engine
-    import subprocess
-    
-    # force push — bypass everything
+    print_banner()
+
+    abs_path = os.path.abspath(path)
+
+    # ── FORCE PUSH ──────────────────────────────────────────
     if force:
         console.print("[red]⚠ FORCE PUSH ACTIVATED — Security gate bypassed[/red]")
         confirmed = click.confirm(
-            "This bypasses all security checks. Are you sure?",
+            "This bypasses all security checks and will be logged. Are you sure?",
             default=False
         )
         if not confirmed:
             console.print("[yellow]Force push cancelled.[/yellow]")
             return
-        
+
         if not message:
             message = click.prompt("Commit message", default="force push")
-        
+
         try:
-            subprocess.run(['git', 'add', '.'], check=True)
-            subprocess.run(['git', 'commit', '-m', message], check=True)
-            result = subprocess.run(
-                ['git', 'push', '--force'],
-                capture_output=True, text=True
-            )
+            subprocess.run(['git', 'add', '.'], cwd=abs_path, check=True)
+            subprocess.run(['git', 'commit', '-m', message], cwd=abs_path, check=True)
+            result = run_git_command(['git', 'push', '--force'], cwd=abs_path)
+
             if result.returncode == 0:
                 console.print("[yellow]⚠ Force push successful — security was bypassed[/yellow]")
-                console.print("[yellow]This action has been logged.[/yellow]")
-                
-                # log the force push
+                console.print("[yellow]This action has been logged for audit.[/yellow]")
                 from storage.database import log_force_push
-                log_force_push(path, message)
+                log_force_push(abs_path, message)
             else:
                 console.print(f"[red]Push failed: {result.stderr}[/red]")
         except subprocess.CalledProcessError as e:
             console.print(f"[red]Git error: {e}[/red]")
         return
-    
-    # check if git initialized
-    if not os.path.exists(os.path.join(path, '.git')) and not os.path.exists('.git'):
+
+    # ── CHECK GIT INITIALIZED ───────────────────────────────
+    if not os.path.exists(os.path.join(abs_path, '.git')):
         console.print("[yellow]Git not initialized in this directory.[/yellow]")
         init = click.confirm("Initialize git repository?", default=True)
         if init:
-            subprocess.run(['git', 'init'], cwd=path)
-            console.print("[green]Git initialized.[/green]")
+            subprocess.run(['git', 'init'], cwd=abs_path, check=True)
+            console.print("[green]✓ Git initialized.[/green]")
         else:
             console.print("[red]Aborted.[/red]")
             return
+
+    # ── SECURITY SCAN ───────────────────────────────────────
+    console.print(f"\n[cyan]Running security scan on[/cyan] [bold]{path}[/bold]...")
     
-    # run security scan
-    console.print("[cyan]Running security scan before push...[/cyan]")
-    engine = Engine(path)
-    report = engine.run()
-    
+    with console.status("[cyan]Scanning...[/cyan]", spinner="dots"):
+        engine = Engine(abs_path)
+        report = engine.run()
+
     score = report.score.total
     zone = report.score.zone
-    
-    critical_findings = [f for f in report.findings
-                        if f.severity == "critical"
-                        and f.file != "package.json"]
-    
-    # QUARANTINE — hard block
+
+    critical_findings = [
+        f for f in report.findings
+        if f.severity == "critical" and f.file != "package.json"
+    ]
+
+    display_score(report.score)
+
+    # ── QUARANTINE — HARD BLOCK ─────────────────────────────
     if zone == "QUARANTINE" or critical_findings:
-        console.print(f"\n[red]╔══════════════════════════════════════╗[/red]")
-        console.print(f"[red]║  🚫 PUSH BLOCKED — QUARANTINE ZONE   ║[/red]")
-        console.print(f"[red]║  Score: {score}/100                     ║[/red]")
-        console.print(f"[red]╚══════════════════════════════════════╝[/red]")
+        console.print(Panel(
+            Align.center(
+                f"[bold red]🚫 PUSH BLOCKED[/bold red]\n\n"
+                f"[red]Score: {score}/100 — QUARANTINE[/red]\n\n"
+                f"[yellow]Critical findings must be fixed before pushing.\n"
+                f"Run [cyan]spirit fix {path}[/cyan] to auto-remediate\n"
+                f"Or use [cyan]spirit push --force[/cyan] to bypass (logged)[/yellow]"
+            ),
+            title="[red]Security Gate — Push Rejected[/red]",
+            border_style="red",
+            padding=(1, 4)
+        ))
         console.print("\n[red]Critical Findings:[/red]")
         for f in critical_findings:
-            console.print(f"  [red]●[/red] {f.library} — {f.message}")
-        console.print(f"\n[yellow]Run [cyan]spirit fix {path}[/cyan] to auto-remediate[/yellow]")
-        console.print(f"[yellow]Or use [cyan]spirit push --force[/cyan] to bypass (logged)[/yellow]")
+            console.print(f"  [red]●[/red] [bold]{f.library}[/bold] — {f.message}")
         return
-    
-    # WARNING — acknowledgement required
+
+    # ── WARNING — ACKNOWLEDGEMENT REQUIRED ──────────────────
     elif zone == "WARNING":
-        console.print(f"\n[yellow]⚠ Score: {score}/100 — WARNING[/yellow]")
-        console.print("[yellow]Active findings require acknowledgement:[/yellow]")
+        console.print(Panel(
+            Align.center(
+                f"[bold yellow]⚠ PUSH WARNING[/bold yellow]\n\n"
+                f"[yellow]Score: {score}/100 — WARNING[/yellow]\n\n"
+                f"[dim]Developer acknowledgement required.[/dim]"
+            ),
+            title="[yellow]Security Gate — Review Required[/yellow]",
+            border_style="yellow",
+            padding=(1, 4)
+        ))
+
+        console.print("\n[yellow]Active Findings:[/yellow]")
         for f in report.findings[:5]:
-            console.print(f"  [yellow]●[/yellow] {f.library} — {f.message[:60]}")
+            console.print(f"  [yellow]●[/yellow] [bold]{f.library}[/bold] — {f.message[:70]}")
+
         confirmed = click.confirm(
-            "\nI have reviewed all findings and accept the risk. Proceed?",
+            "\nI have reviewed all findings and accept the risk. Proceed with push?",
             default=False
         )
         if not confirmed:
             console.print("[red]Push cancelled.[/red]")
             console.print(f"[yellow]Tip: Run [cyan]spirit fix {path}[/cyan] to fix issues first[/yellow]")
             return
-    
-    # SAFE — proceed
+
+        console.print("[yellow]Push proceeding with acknowledged risk.[/yellow]")
+
+    # ── SAFE — PROCEED ──────────────────────────────────────
     else:
-        console.print(f"\n[green]✓ Score: {score}/100 — SAFE[/green]")
-        console.print("[green]All security checks passed.[/green]")
-    
-    # get commit message
+        console.print(Panel(
+            Align.center(
+                f"[bold green]✅ PUSH APPROVED[/bold green]\n\n"
+                f"[green]Score: {score}/100 — SAFE[/green]\n\n"
+                f"[dim]All security checks passed.[/dim]"
+            ),
+            title="[green]Security Gate — Approved[/green]",
+            border_style="green",
+            padding=(1, 4)
+        ))
+
+    # ── GIT ADD, COMMIT, PUSH ───────────────────────────────
     if not message:
-        message = click.prompt("Commit message", default="security-verified commit")
-    
-    # git add, commit, push
+        message = click.prompt("\nCommit message", default="security-verified commit")
+
     try:
         console.print("\n[cyan]Running git add .[/cyan]")
-        subprocess.run(['git', 'add', '.'], check=True)
-        
+        subprocess.run(['git', 'add', '.'], cwd=abs_path, check=True)
+
         console.print(f"[cyan]Committing: {message}[/cyan]")
-        subprocess.run(['git', 'commit', '-m', message], check=True)
-        
+        subprocess.run(['git', 'commit', '-m', message], cwd=abs_path, check=True)
+
         console.print("[cyan]Pushing to remote...[/cyan]")
-        result = subprocess.run(['git', 'push'], capture_output=True, text=True)
-        
+        result = run_git_command(['git', 'push'], cwd=abs_path)
+
         if result.returncode == 0:
-            console.print(f"\n[green]✓ Push successful — Score: {score}/100 {zone}[/green]")
+            console.print(Panel(
+                Align.center(
+                    f"[bold green]✅ Push Successful[/bold green]\n\n"
+                    f"[green]Score: {score}/100 — {zone}[/green]"
+                ),
+                border_style="green",
+                padding=(1, 4)
+            ))
         else:
             console.print(f"[red]Push failed: {result.stderr}[/red]")
-            
+
     except subprocess.CalledProcessError as e:
         console.print(f"[red]Git error: {e}[/red]")
-
 
 @cli.command()
 @click.argument('path', default='.')
 def fix(path):
     """Run auto-remediation"""
     print_banner()
-    
+
     with console.status(
         "[cyan]Scanning for fixable issues...[/cyan]",
         spinner="dots"
     ):
         engine = Engine(path)
         report = engine.run()
-    
-    if not report.findings:
+
+    # filter only config findings that are fixable
+    fixable = [
+        f for f in report.findings
+        if f.library in ['bcrypt', 'jwt', 'axios']
+        and f.file != 'package.json'
+        and os.path.exists(f.file)
+    ]
+
+    if not fixable:
         console.print(Panel(
-            Align.center("[bold green]✅ No issues found. Nothing to fix.[/bold green]"),
+            Align.center(
+                "[bold green]✅ No auto-fixable issues found.[/bold green]\n\n"
+                "[dim]CVE and phantom findings require manual resolution.[/dim]"
+            ),
             border_style="green"
         ))
         return
-    
+
     console.print()
     console.print(Rule("[bold cyan]Auto-Remediation Engine[/bold cyan]", style="cyan"))
-    console.print(f"\n[bold]Found [red]{len(report.findings)}[/red] fixable issues[/bold]\n")
-    
-    fixes = {
-        "bcrypt": {
-            "pattern": r'(\.hashSync\s*\([^,]+,\s*)(\d+)(\))',
-            "replacement": r'\g<1>12\g<3>',
-            "description": "bcrypt rounds 4 -> 12"
-        },
-        "jwt": {
-            "pattern": r'algorithm\s*:\s*["\']none["\']',
-            "replacement": "algorithm: 'HS256'",
-            "description": "JWT algorithm none -> HS256"
-        },
-        "axios": {
-            "pattern": r'rejectUnauthorized\s*:\s*false',
-            "replacement": "rejectUnauthorized: true",
-            "description": "axios rejectUnauthorized false -> true"
-        }
+    console.print(f"\n[bold]Found [red]{len(fixable)}[/red] fixable issues[/bold]\n")
+
+    # fix rules — multiple patterns per library for robustness
+    fix_rules = {
+        "bcrypt": [
+            {
+                # handles: hashSync(pwd, 4) hashSync(password, 4) hashSync(x, 4)
+                "pattern": r'(\.hashSync\s*\([^,]+,\s*)([0-9]+)(\s*\))',
+                "replacement": r'\g<1>12\g<3>',
+                "description": "bcrypt rounds → 12",
+                "validate": lambda old, new: "12" in new
+            },
+            {
+                # handles: hash(pwd, 4)
+                "pattern": r'(\.hash\s*\([^,]+,\s*)([0-9]+)(\s*[,)])',
+                "replacement": r'\g<1>12\g<3>',
+                "description": "bcrypt hash rounds → 12",
+                "validate": lambda old, new: "12" in new
+            }
+        ],
+        "jwt": [
+            {
+                # handles: algorithm: "none" algorithm: 'none' algorithm:"none"
+                "pattern": r'algorithm\s*:\s*["\']none["\']',
+                "replacement": "algorithm: 'HS256'",
+                "description": "JWT algorithm → HS256",
+                "validate": lambda old, new: "HS256" in new
+            },
+            {
+                # handles: algorithm: `none`
+                "pattern": r'algorithm\s*:\s*`none`',
+                "replacement": "algorithm: 'HS256'",
+                "description": "JWT algorithm → HS256",
+                "validate": lambda old, new: "HS256" in new
+            }
+        ],
+        "axios": [
+            {
+                # handles: rejectUnauthorized: false rejectUnauthorized:false
+                "pattern": r'rejectUnauthorized\s*:\s*false',
+                "replacement": "rejectUnauthorized: true",
+                "description": "axios TLS validation → enabled",
+                "validate": lambda old, new: "rejectUnauthorized: true" in new
+            },
+            {
+                # handles: NODE_TLS_REJECT_UNAUTHORIZED = "0"
+                "pattern": r'NODE_TLS_REJECT_UNAUTHORIZED\s*=\s*["\']0["\']',
+                "replacement": 'NODE_TLS_REJECT_UNAUTHORIZED = "1"',
+                "description": "TLS rejection → enabled",
+                "validate": lambda old, new: '"1"' in new
+            }
+        ]
     }
-    
-    import re
+
+    # group findings by file
     files_to_fix = {}
-    for finding in report.findings:
+    for finding in fixable:
         if finding.file not in files_to_fix:
             files_to_fix[finding.file] = []
         files_to_fix[finding.file].append(finding)
-    
+
+    total_fixed = 0
+    total_skipped = 0
+    total_failed = 0
+
     for filepath, findings in files_to_fix.items():
         try:
+            # read file
             with open(filepath, 'r', encoding='utf-8') as f:
                 original = f.read()
-            
+
             modified = original
             applied_fixes = []
-            
+            failed_fixes = []
+
             for finding in findings:
                 lib = finding.library
-                if lib in fixes:
-                    fix_info = fixes[lib]
-                    new_content = re.sub(
-                        fix_info["pattern"],
-                        fix_info["replacement"],
-                        modified
+                if lib not in fix_rules:
+                    continue
+
+                rules = fix_rules[lib]
+                fix_applied = False
+
+                for rule in rules:
+                    try:
+                        new_content = re.sub(
+                            rule["pattern"],
+                            rule["replacement"],
+                            modified,
+                            flags=re.IGNORECASE
+                        )
+
+                        if new_content != modified:
+                            # validate the fix worked correctly
+                            if rule["validate"](modified, new_content):
+                                applied_fixes.append(rule["description"])
+                                modified = new_content
+                                fix_applied = True
+                                break
+                            else:
+                                failed_fixes.append(
+                                    f"{lib} — validation failed after fix"
+                                )
+                    except re.error as e:
+                        failed_fixes.append(f"{lib} — regex error: {e}")
+
+                if not fix_applied and lib in fix_rules:
+                    failed_fixes.append(
+                        f"{lib} — pattern not matched in file "
+                        f"(may need manual fix)"
                     )
-                    if new_content != modified:
-                        applied_fixes.append(fix_info["description"])
-                        modified = new_content
-            
-            if applied_fixes:
+
+            # show what will be changed
+            if applied_fixes or failed_fixes:
+                content_lines = []
+
+                if applied_fixes:
+                    content_lines.append("[green]Fixes to apply:[/green]")
+                    for fix in applied_fixes:
+                        content_lines.append(f"  [green]+[/green] {fix}")
+
+                if failed_fixes:
+                    content_lines.append("")
+                    content_lines.append("[yellow]Could not auto-fix:[/yellow]")
+                    for fail in failed_fixes:
+                        content_lines.append(f"  [yellow]![/yellow] {fail}")
+
                 console.print(Panel(
-                    "\n".join([f"  [green]+[/green] {fix}" for fix in applied_fixes]),
+                    "\n".join(content_lines),
                     title=f"[cyan]{filepath}[/cyan]",
                     border_style="cyan"
                 ))
-                
-                if click.confirm(f"Apply fixes to {filepath}?"):
+
+            # only ask to apply if there are actual fixes
+            if applied_fixes:
+                if click.confirm(f"Apply {len(applied_fixes)} fix(es) to {filepath}?"):
+                    # backup original file
+                    backup_path = filepath + ".spirit.bak"
+                    with open(backup_path, 'w', encoding='utf-8') as f:
+                        f.write(original)
+
+                    # write fixed file
                     with open(filepath, 'w', encoding='utf-8') as f:
                         f.write(modified)
-                    console.print(f"  [green]✅ Fixed {filepath}[/green]\n")
+
+                    console.print(
+                        f"  [green]✅ Fixed {filepath}[/green] "
+                        f"[dim](backup: {backup_path})[/dim]\n"
+                    )
+                    total_fixed += len(applied_fixes)
                 else:
-                    console.print(f"  [yellow]⏭  Skipped {filepath}[/yellow]\n")
-                    
+                    console.print(
+                        f"  [yellow]⏭ Skipped {filepath}[/yellow]\n"
+                    )
+                    total_skipped += len(applied_fixes)
+
+            if failed_fixes:
+                total_failed += len(failed_fixes)
+
+        except PermissionError:
+            console.print(f"[red]Permission denied: {filepath}[/red]")
+            total_failed += 1
+        except UnicodeDecodeError:
+            console.print(f"[red]Cannot read file (encoding issue): {filepath}[/red]")
+            total_failed += 1
         except Exception as e:
-            console.print(f"[red]Error fixing {filepath}: {e}[/red]")
-    
+            console.print(f"[red]Unexpected error fixing {filepath}: {e}[/red]")
+            total_failed += 1
+
+    # summary
     console.print()
-    console.print(Rule("[cyan]Rescanning...[/cyan]", style="cyan"))
-    
-    with console.status("[cyan]Verifying fixes...[/cyan]", spinner="dots"):
-        engine2 = Engine(path)
-        report2 = engine2.run()
-    
-    style, icon, color = get_zone_style(report2.score.zone)
     console.print(Panel(
-        Align.center(
-            f"{icon} [bold]Score: [{color}]{report2.score.total}/100 "
-            f"-- {report2.score.zone}[/{color}][/bold] {icon}\n\n"
-            f"[dim]Findings remaining: {len(report2.findings)}[/dim]"
-        ),
-        title="[bold green]Remediation Complete[/bold green]",
-        border_style="green",
-        padding=(1, 4)
+        f"[green]Fixed: {total_fixed}[/green]   "
+        f"[yellow]Skipped: {total_skipped}[/yellow]   "
+        f"[red]Failed: {total_failed}[/red]",
+        title="[cyan]Remediation Summary[/cyan]",
+        border_style="cyan"
     ))
+
+    # rescan to verify
+    if total_fixed > 0:
+        console.print()
+        console.print(Rule("[cyan]Rescanning...[/cyan]", style="cyan"))
+
+        with console.status("[cyan]Verifying fixes...[/cyan]", spinner="dots"):
+            engine2 = Engine(path)
+            report2 = engine2.run()
+
+        style, icon, color = get_zone_style(report2.score.zone)
+        console.print(Panel(
+            Align.center(
+                f"{icon} [bold]Score: [{color}]{report2.score.total}/100 "
+                f"-- {report2.score.zone}[/{color}][/bold] {icon}\n\n"
+                f"[dim]Findings remaining: {len(report2.findings)}[/dim]\n\n"
+                f"[dim]Backup files created with .spirit.bak extension[/dim]"
+            ),
+            title="[bold green]Remediation Complete[/bold green]",
+            border_style="green",
+            padding=(1, 4)
+        ))
+    else:
+        console.print(
+            "[yellow]No fixes were applied. "
+            "Review failed fixes manually.[/yellow]"
+        )
+
 
 @cli.command()
 @click.argument('path', default='.')
@@ -411,7 +589,61 @@ def watch(path):
     """Watch for file changes and scan incrementally"""
     print_banner()
     console.print(f"[cyan]Watching[/cyan] [bold]{path}[/bold] for changes...")
-    console.print("[dim]Press Ctrl+C to stop[/dim]")
+    console.print("[dim]Scans every 5 saves — Press Ctrl+C to stop[/dim]\n")
+
+    class SpiritWatcher(FileSystemEventHandler):
+        def __init__(self):
+            self.save_count = 0
+            self.scanning = False
+
+        def on_modified(self, event):
+            if event.is_directory:
+                return
+            if not event.src_path.endswith(('.js', '.ts', '.py', '.json')):
+                return
+            if self.scanning:
+                return
+
+            self.save_count += 1
+            remaining = 5 - self.save_count
+            
+            console.print(
+                f"[dim]Save detected ({self.save_count}/5) — "
+                f"{remaining} more save(s) until next scan[/dim]"
+            )
+
+            if self.save_count >= 5:
+                self.scanning = True
+                self.save_count = 0
+                
+                console.print(f"\n[cyan]5 saves reached — scanning...[/cyan]")
+                
+                with console.status("[cyan]Rescanning...[/cyan]", spinner="dots"):
+                    engine = Engine(path)
+                    report = engine.run()
+                
+                display_score(report.score)
+                
+                if report.findings:
+                    console.print(f"[yellow]⚠ {len(report.findings)} findings[/yellow]")
+                else:
+                    console.print("[green]✅ No findings[/green]")
+                
+                console.print(Rule(style="dim"))
+                console.print("[dim]Watching again — next scan after 5 saves[/dim]\n")
+                self.scanning = False
+
+    observer = Observer()
+    observer.schedule(SpiritWatcher(), path, recursive=True)
+    observer.start()
+
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        observer.stop()
+        console.print("\n[cyan]Watch stopped.[/cyan]")
+    observer.join()
 
 @cli.command()
 @click.argument('path', default='.')
@@ -419,44 +651,43 @@ def watch(path):
 @click.option('--html', 'export_html', is_flag=True, help='Export HTML report')
 def report(path, export_json, export_html):
     """Generate security report"""
-    import sys
-    sys.path.insert(0, 'spirit')
-    
-    from core import Engine
+    print_banner()
     from reporting import ReportGenerator, HTMLExporter, JSONExporter
-    
+
     console.print(f"[cyan]Generating report for[/cyan] [bold]{path}[/bold]...")
-    
-    engine = Engine(path)
-    scan_report = engine.run()
-    
+
+    with console.status("[cyan]Scanning...[/cyan]", spinner="dots"):
+        engine = Engine(path)
+        scan_report = engine.run()
+
     generator = ReportGenerator()
     report_data = generator.generate(scan_report, path)
-    
-    # always show terminal summary
+
     score = report_data["score"]["total"]
     zone = report_data["score"]["zone"]
     trend = report_data["trend"]
-    
+
     zone_color = "green" if zone == "SAFE" else "yellow" if zone == "WARNING" else "red"
     trend_color = "green" if trend == "IMPROVING" else "red" if trend == "DEGRADING" else "yellow"
-    
-    console.print(f"\n[bold {zone_color}]{score}/100 — {zone}[/bold {zone_color}]")
-    console.print(f"Trend: [{trend_color}]{trend}[/{trend_color}]")
+
+    display_score(scan_report.score)
+
+    console.print(f"\nTrend: [{trend_color}]{trend}[/{trend_color}]")
     console.print(f"Total findings: {len(report_data['findings'])}")
-    
-    # scan history
+
     console.print("\n[cyan]Scan History:[/cyan]")
     for h in report_data["history"]:
         h_color = "green" if h["zone"] == "SAFE" else "yellow" if h["zone"] == "WARNING" else "red"
-        console.print(f"  [{h_color}]{h['score']:>6}/100 {h['zone']:<12}[/{h_color}] {h['timestamp'][:19]}")
-    
-    # export if requested
+        console.print(
+            f"  [{h_color}]{h['score']:>6}/100 {h['zone']:<12}[/{h_color}] "
+            f"{h['timestamp'][:19]}"
+        )
+
     if export_html:
         exporter = HTMLExporter()
         path_out = exporter.export(report_data)
         console.print(f"\n[green]HTML report saved:[/green] {path_out}")
-    
+
     if export_json:
         exporter = JSONExporter()
         path_out = exporter.export(report_data)
@@ -466,39 +697,49 @@ def report(path, export_json, export_html):
 @click.argument('path', default='.')
 def install_hooks(path):
     """Install SpiritCLI as a git pre-push hook"""
-    import os
-    
-    git_dir = os.path.join(path, '.git')
+    abs_path = os.path.abspath(path)
+    git_dir = os.path.join(abs_path, '.git')
+
     if not os.path.exists(git_dir):
         console.print("[red]No git repository found. Run git init first.[/red]")
         return
-    
+
     hooks_dir = os.path.join(git_dir, 'hooks')
     os.makedirs(hooks_dir, exist_ok=True)
-    
     hook_path = os.path.join(hooks_dir, 'pre-push')
-    
-    hook_content = """#!/bin/sh
-echo "SpiritCLI: Running security scan..."
-python spirit.py scan .
-if [ $? -ne 0 ]; then
+
+    # get absolute path to spirit.py
+    spirit_py = os.path.abspath('spirit.py')
+
+    hook_content = f"""#!/bin/sh
+echo "SpiritCLI: Running security scan before push..."
+python "{spirit_py}" scan "{abs_path}"
+EXIT_CODE=$?
+if [ $EXIT_CODE -ne 0 ]; then
     echo "SpiritCLI: Security scan failed. Push blocked."
     exit 1
 fi
-echo "SpiritCLI: Security check passed."
+echo "SpiritCLI: Security check passed. Proceeding with push."
 exit 0
 """
-    
+
     with open(hook_path, 'w') as f:
         f.write(hook_content)
-    
-    # make executable on Mac/Linux
+
     try:
         os.chmod(hook_path, 0o755)
     except Exception:
         pass
-    
-    console.print(f"[green]✓ Git hook installed at {hook_path}[/green]")
-    console.print("[green]✓ Every git push will now run a security scan[/green]")
+
+    console.print(Panel(
+        f"[green]✓ Git hook installed[/green]\n\n"
+        f"[dim]Location: {hook_path}[/dim]\n\n"
+        f"Every [cyan]git push[/cyan] in [bold]{path}[/bold] will now "
+        f"automatically run a SpiritCLI security scan.",
+        title="[green]Hook Installed Successfully[/green]",
+        border_style="green",
+        padding=(1, 2)
+    ))
+
 if __name__ == '__main__':
     cli()

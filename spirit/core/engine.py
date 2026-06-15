@@ -38,17 +38,21 @@ class Engine:
         freshness_score, freshness_findings = self._check_freshness()
         self.findings.extend(freshness_findings)
         
-        # Step 7 - compute score
+        # Step 7 - provenance check
+        console.print("[cyan]Checking provenance trust...[/cyan]")
+        trust_score, trust_findings = self._check_provenance()
+        self.findings.extend(trust_findings)
+
+        # Step 8 - compute score (update trust from 100 to real)
         calc = Calculator()
         score = calc.compute(
             config=self._get_config_score(),
             cve=cve_score,
-            trust=100,
+            trust=trust_score,      # now real
             freshness=freshness_score,
             phantom=phantom_score
         )
-        
-        # Step 8 - save to database
+        # Step 9 - save to database
         from storage.database import save_scan
         save_scan(
             path=self.path,
@@ -57,7 +61,7 @@ class Engine:
             findings_count=len(self.findings)
         )
         
-        # Step 9 - build report
+        # Step 10 - build report
         report = Report(
             scan_path=self.path,
             findings=self.findings,
@@ -286,3 +290,41 @@ class Engine:
                 penalty += 3
         
         return round(max(0, 100 - penalty), 1)
+    
+    def _check_provenance(self):
+        from provenance import TrustEngine
+        from models import Finding
+        
+        engine = TrustEngine()
+        analyses = engine.analyze_all(self.dependencies)
+        trust_score = engine.compute_aggregate_score(analyses)
+        
+        trust_findings = []
+        
+        for analysis in analyses:
+            if analysis["risk_level"] in ["critical", "high"]:
+                severity = "critical" if analysis["risk_level"] == "critical" else "high"
+                
+                # one finding per risky signal
+                for signal in analysis["signals"][:2]:  # max 2 per package
+                    trust_findings.append(Finding(
+                        severity=severity,
+                        library=analysis["package"],
+                        file="package.json",
+                        line=0,
+                        message=f"[Trust] {signal}",
+                        fix=f"Review {analysis['package']} — trust score: {analysis['trust_score']}/100"
+                    ))
+            
+            elif analysis["risk_level"] == "medium":
+                for signal in analysis["signals"][:1]:
+                    trust_findings.append(Finding(
+                        severity="medium",
+                        library=analysis["package"],
+                        file="package.json",
+                        line=0,
+                        message=f"[Trust] {signal}",
+                        fix=f"Monitor {analysis['package']} — trust score: {analysis['trust_score']}/100"
+                    ))
+        
+        return trust_score, trust_findings

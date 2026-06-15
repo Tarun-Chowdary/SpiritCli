@@ -1,31 +1,16 @@
 class FreshnessScorer:
     
-    def compute(self, dependencies):
+    def compute(self, freshness_details_list):
         """
-        Checks npm registry for latest versions.
-        Returns 0-100 based on how outdated packages are.
+        Takes list of freshness detail dicts
+        Returns 0-100 aggregate score
         """
-        if not dependencies:
+        if not freshness_details_list:
             return 100.0
         
-        try:
-            from integrations.npm_registry import NPMRegistry
-            registry = NPMRegistry()
-            
-            scores = []
-            for dep in dependencies:
-                if dep.is_dev:
-                    continue
-                score = registry.get_freshness_score(
-                    dep.name, 
-                    dep.version.lstrip('^~')
-                )
-                scores.append(score)
-            
-            if not scores:
-                return 100.0
-            
-            return round(sum(scores) / len(scores), 1)
+        valid = [d for d in freshness_details_list if d is not None]
+        if not valid:
+            return 100.0
         
-        except Exception:
-            return 80.0  # neutral fallback if registry unreachable
+        scores = [d["score"] for d in valid]
+        return round(sum(scores) / len(scores), 1)

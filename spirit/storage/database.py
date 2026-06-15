@@ -73,5 +73,26 @@ def get_scan_history(path, limit=10):
     conn.close()
     return rows
 
+def log_force_push(path, message):
+    from datetime import datetime
+    conn = sqlite3.connect(DB_PATH)
+    
+    # create table if not exists
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS force_pushes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            path TEXT,
+            message TEXT,
+            timestamp TEXT
+        )
+    """)
+    
+    conn.execute("""
+        INSERT INTO force_pushes (path, message, timestamp)
+        VALUES (?, ?, ?)
+    """, (path, message, datetime.now().isoformat()))
+    
+    conn.commit()
+    conn.close()
 # initialize on import
 init_db()

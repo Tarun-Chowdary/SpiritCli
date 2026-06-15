@@ -174,105 +174,130 @@ def scan(path):
 
 @cli.command()
 @click.argument('path', default='.')
-def push(path):
-    """Run push enforcement check"""
-    print_banner()
+@click.option('--message', '-m', default=None, help='Commit message')
+@click.option('--force', '-f', is_flag=True, help='Force push bypassing security gate')
+def push(path, message, force):
+    """Security-gated git add, commit and push"""
+    import sys
+    import os
+    sys.path.insert(0, 'spirit')
     
-    with console.status(
-        "[cyan]Running security gate check...[/cyan]",
-        spinner="dots"
-    ):
-        engine = Engine(path)
-        report = engine.run()
+    from core import Engine
+    import subprocess
+    
+    # force push — bypass everything
+    if force:
+        console.print("[red]⚠ FORCE PUSH ACTIVATED — Security gate bypassed[/red]")
+        confirmed = click.confirm(
+            "This bypasses all security checks. Are you sure?",
+            default=False
+        )
+        if not confirmed:
+            console.print("[yellow]Force push cancelled.[/yellow]")
+            return
+        
+        if not message:
+            message = click.prompt("Commit message", default="force push")
+        
+        try:
+            subprocess.run(['git', 'add', '.'], check=True)
+            subprocess.run(['git', 'commit', '-m', message], check=True)
+            result = subprocess.run(
+                ['git', 'push', '--force'],
+                capture_output=True, text=True
+            )
+            if result.returncode == 0:
+                console.print("[yellow]⚠ Force push successful — security was bypassed[/yellow]")
+                console.print("[yellow]This action has been logged.[/yellow]")
+                
+                # log the force push
+                from storage.database import log_force_push
+                log_force_push(path, message)
+            else:
+                console.print(f"[red]Push failed: {result.stderr}[/red]")
+        except subprocess.CalledProcessError as e:
+            console.print(f"[red]Git error: {e}[/red]")
+        return
+    
+    # check if git initialized
+    if not os.path.exists(os.path.join(path, '.git')) and not os.path.exists('.git'):
+        console.print("[yellow]Git not initialized in this directory.[/yellow]")
+        init = click.confirm("Initialize git repository?", default=True)
+        if init:
+            subprocess.run(['git', 'init'], cwd=path)
+            console.print("[green]Git initialized.[/green]")
+        else:
+            console.print("[red]Aborted.[/red]")
+            return
+    
+    # run security scan
+    console.print("[cyan]Running security scan before push...[/cyan]")
+    engine = Engine(path)
+    report = engine.run()
     
     score = report.score.total
     zone = report.score.zone
-    findings = report.findings
-    critical = [f for f in findings if f.severity == "critical"]
-    high = [f for f in findings if f.severity == "high"]
     
-    console.print()
+    critical_findings = [f for f in report.findings
+                        if f.severity == "critical"
+                        and f.file != "package.json"]
     
-    if zone == "QUARANTINE":
-        console.print(Panel(
-            Align.center(
-                f"[bold red]🚨 PUSH BLOCKED 🚨[/bold red]\n\n"
-                f"[red]Score: {score}/100 -- QUARANTINE[/red]\n\n"
-                f"[white]Critical findings: [red]{len(critical)}[/red][/white]\n"
-                f"[white]High findings: [orange3]{len(high)}[/orange3][/white]\n\n"
-                f"[dim]Fix all critical findings before pushing.\n"
-                f"Run [cyan]spirit fix {path}[/cyan] to auto-remediate.[/dim]"
-            ),
-            title="[bold red]SECURITY GATE -- REJECTED[/bold red]",
-            border_style="red",
-            padding=(1, 4)
-        ))
-        
-        if critical:
-            console.print()
-            console.print(Rule("[red]Critical Issues[/red]", style="red"))
-            for f in critical:
-                console.print(
-                    f"  [red]🔴[/red] [bold]{f.library}[/bold] -- "
-                    f"{f.message} "
-                    f"[dim]({f.file}:{f.line})[/dim]"
-                )
-        raise SystemExit(1)
+    # QUARANTINE — hard block
+    if zone == "QUARANTINE" or critical_findings:
+        console.print(f"\n[red]╔══════════════════════════════════════╗[/red]")
+        console.print(f"[red]║  🚫 PUSH BLOCKED — QUARANTINE ZONE   ║[/red]")
+        console.print(f"[red]║  Score: {score}/100                     ║[/red]")
+        console.print(f"[red]╚══════════════════════════════════════╝[/red]")
+        console.print("\n[red]Critical Findings:[/red]")
+        for f in critical_findings:
+            console.print(f"  [red]●[/red] {f.library} — {f.message}")
+        console.print(f"\n[yellow]Run [cyan]spirit fix {path}[/cyan] to auto-remediate[/yellow]")
+        console.print(f"[yellow]Or use [cyan]spirit push --force[/cyan] to bypass (logged)[/yellow]")
+        return
     
+    # WARNING — acknowledgement required
     elif zone == "WARNING":
-        console.print(Panel(
-            Align.center(
-                f"[bold yellow]⚠️  PUSH WARNING ⚠️ [/bold yellow]\n\n"
-                f"[yellow]Score: {score}/100 -- WARNING[/yellow]\n\n"
-                f"[white]Critical: [red]{len(critical)}[/red]  "
-                f"High: [orange3]{len(high)}[/orange3][/white]\n\n"
-                f"[dim]Developer acknowledgement required.[/dim]"
-            ),
-            title="[bold yellow]SECURITY GATE -- REVIEW REQUIRED[/bold yellow]",
-            border_style="yellow",
-            padding=(1, 4)
-        ))
-        
-        if critical:
-            console.print()
-            console.print(Rule("[yellow]Critical Findings[/yellow]", style="yellow"))
-            for f in critical:
-                console.print(
-                    f"  [red]🔴[/red] [bold]{f.library}[/bold] -- "
-                    f"{f.message} "
-                    f"[dim]({f.file}:{f.line})[/dim]"
-                )
-        
-        console.print()
+        console.print(f"\n[yellow]⚠ Score: {score}/100 — WARNING[/yellow]")
+        console.print("[yellow]Active findings require acknowledgement:[/yellow]")
+        for f in report.findings[:5]:
+            console.print(f"  [yellow]●[/yellow] {f.library} — {f.message[:60]}")
         confirmed = click.confirm(
-            "I have reviewed all findings and accept the risk",
+            "\nI have reviewed all findings and accept the risk. Proceed?",
             default=False
         )
-        
-        if confirmed:
-            console.print(Panel(
-                Align.center("[yellow]Push proceeding with acknowledged risk.[/yellow]"),
-                border_style="yellow"
-            ))
-        else:
-            console.print(Panel(
-                Align.center("[red]Push cancelled by developer.[/red]"),
-                border_style="red"
-            ))
-            raise SystemExit(1)
+        if not confirmed:
+            console.print("[red]Push cancelled.[/red]")
+            console.print(f"[yellow]Tip: Run [cyan]spirit fix {path}[/cyan] to fix issues first[/yellow]")
+            return
     
+    # SAFE — proceed
     else:
-        console.print(Panel(
-            Align.center(
-                f"[bold green]✅ PUSH APPROVED ✅[/bold green]\n\n"
-                f"[green]Score: {score}/100 -- SAFE[/green]\n\n"
-                f"[dim]No critical findings detected.\n"
-                f"Codebase meets security standards.[/dim]"
-            ),
-            title="[bold green]SECURITY GATE -- APPROVED[/bold green]",
-            border_style="green",
-            padding=(1, 4)
-        ))
+        console.print(f"\n[green]✓ Score: {score}/100 — SAFE[/green]")
+        console.print("[green]All security checks passed.[/green]")
+    
+    # get commit message
+    if not message:
+        message = click.prompt("Commit message", default="security-verified commit")
+    
+    # git add, commit, push
+    try:
+        console.print("\n[cyan]Running git add .[/cyan]")
+        subprocess.run(['git', 'add', '.'], check=True)
+        
+        console.print(f"[cyan]Committing: {message}[/cyan]")
+        subprocess.run(['git', 'commit', '-m', message], check=True)
+        
+        console.print("[cyan]Pushing to remote...[/cyan]")
+        result = subprocess.run(['git', 'push'], capture_output=True, text=True)
+        
+        if result.returncode == 0:
+            console.print(f"\n[green]✓ Push successful — Score: {score}/100 {zone}[/green]")
+        else:
+            console.print(f"[red]Push failed: {result.stderr}[/red]")
+            
+    except subprocess.CalledProcessError as e:
+        console.print(f"[red]Git error: {e}[/red]")
+
 
 @cli.command()
 @click.argument('path', default='.')
@@ -437,5 +462,43 @@ def report(path, export_json, export_html):
         path_out = exporter.export(report_data)
         console.print(f"\n[green]JSON report saved:[/green] {path_out}")
 
+@cli.command('install-hooks')
+@click.argument('path', default='.')
+def install_hooks(path):
+    """Install SpiritCLI as a git pre-push hook"""
+    import os
+    
+    git_dir = os.path.join(path, '.git')
+    if not os.path.exists(git_dir):
+        console.print("[red]No git repository found. Run git init first.[/red]")
+        return
+    
+    hooks_dir = os.path.join(git_dir, 'hooks')
+    os.makedirs(hooks_dir, exist_ok=True)
+    
+    hook_path = os.path.join(hooks_dir, 'pre-push')
+    
+    hook_content = """#!/bin/sh
+echo "SpiritCLI: Running security scan..."
+python spirit.py scan .
+if [ $? -ne 0 ]; then
+    echo "SpiritCLI: Security scan failed. Push blocked."
+    exit 1
+fi
+echo "SpiritCLI: Security check passed."
+exit 0
+"""
+    
+    with open(hook_path, 'w') as f:
+        f.write(hook_content)
+    
+    # make executable on Mac/Linux
+    try:
+        os.chmod(hook_path, 0o755)
+    except Exception:
+        pass
+    
+    console.print(f"[green]✓ Git hook installed at {hook_path}[/green]")
+    console.print("[green]✓ Every git push will now run a security scan[/green]")
 if __name__ == '__main__':
     cli()

@@ -8,51 +8,56 @@ class Engine:
         self.dependencies = []
 
     def run(self):
-        from rich.console import Console
         from scoring.calculator import Calculator
         from datetime import datetime
         from models import Report
-        
-        console = Console()
-        
+
         # Step 1 - collect files
         files = self._collect_files()
-        
+
         # Step 2 - collect dependencies
         self.dependencies = self._collect_dependencies()
-        
+
         # Step 3 - run config analysis
         self.findings = self._run_analysis(files)
-        
+
         # Step 4 - CVE check
-        console.print("[cyan]Checking CVEs...[/cyan]")
         cve_score, cve_findings = self._check_cves()
         self.findings.extend(cve_findings)
-        
+
         # Step 5 - phantom check
         phantom_score, phantom_findings = self._check_phantom()
         self.findings.extend(phantom_findings)
-        
+
         # Step 6 - freshness check
-        console.print("[cyan]Checking package freshness...[/cyan]")
         freshness_score, freshness_findings = self._check_freshness()
         self.findings.extend(freshness_findings)
-        
+
         # Step 7 - provenance check
-        console.print("[cyan]Checking provenance trust...[/cyan]")
         trust_score, trust_findings = self._check_provenance()
         self.findings.extend(trust_findings)
 
-        # Step 8 - compute score (update trust from 100 to real)
+        # Step 8 - deduplicate findings
+        seen = set()
+        unique_findings = []
+        for f in self.findings:
+            key = (f.library, f.message[:50], f.file)
+            if key not in seen:
+                seen.add(key)
+                unique_findings.append(f)
+        self.findings = unique_findings
+
+        # Step 9 - compute score
         calc = Calculator()
         score = calc.compute(
             config=self._get_config_score(),
             cve=cve_score,
-            trust=trust_score,      # now real
+            trust=trust_score,
             freshness=freshness_score,
             phantom=phantom_score
         )
-        # Step 9 - save to database
+
+        # Step 10 - save to database
         from storage.database import save_scan
         save_scan(
             path=self.path,
@@ -60,8 +65,8 @@ class Engine:
             zone=score.zone,
             findings_count=len(self.findings)
         )
-        
-        # Step 10 - build report
+
+        # Step 11 - build report
         report = Report(
             scan_path=self.path,
             findings=self.findings,
@@ -69,7 +74,7 @@ class Engine:
             score=score,
             timestamp=datetime.now().isoformat()
         )
-        
+
         return report
 
     def _collect_files(self):
@@ -218,25 +223,23 @@ class Engine:
             ))
 
         return phantom_score, phantom_findings
-    
+
     def _check_freshness(self):
         from integrations.npm_registry import NPMRegistry
         from scoring.freshness_score import FreshnessScorer
-        from models import Finding
-        
+
         registry = NPMRegistry()
         scorer = FreshnessScorer()
-        
+
         details_list = []
         freshness_findings = []
-        
+
         for dep in self.dependencies:
             clean_version = dep.version.lstrip('^~v').strip()
             details = registry.get_freshness_details(dep.name, clean_version)
             details_list.append(details)
-            
+
             if details and details["outdated"]:
-                # only flag if significantly outdated
                 if details["score"] < 80:
                     freshness_findings.append(Finding(
                         severity="low" if details["score"] >= 60 else "medium",
@@ -250,63 +253,23 @@ class Engine:
                         ),
                         fix=f"Upgrade {dep.name} to {details['latest']}"
                     ))
-        
+
         freshness_score = scorer.compute(details_list)
         return freshness_score, freshness_findings
-    def _get_config_score(self):
-        """Convert config findings to 0-100 score"""
-        if not self.findings:
-            return 100.0
-        
-        config_libraries = [
-            'bcrypt',
-            'jwt',
-            'jsonwebtoken',
-            'axios',
-            'mongoose',
-            'express',
-            'lodash'
-        ]
-        
-        # only config findings, not CVE/phantom/freshness findings
-        config_findings = [
-            f for f in self.findings
-            if f.library in config_libraries
-            and f.file != 'package.json'
-        ]
-        
-        if not config_findings:
-            return 100.0
-        
-        penalty = 0
-        for f in config_findings:
-            if f.severity == "critical":
-                penalty += 25
-            elif f.severity == "high":
-                penalty += 15
-            elif f.severity == "medium":
-                penalty += 8
-            elif f.severity == "low":
-                penalty += 3
-        
-        return round(max(0, 100 - penalty), 1)
-    
+
     def _check_provenance(self):
         from provenance import TrustEngine
-        from models import Finding
-        
+
         engine = TrustEngine()
         analyses = engine.analyze_all(self.dependencies)
         trust_score = engine.compute_aggregate_score(analyses)
-        
+
         trust_findings = []
-        
+
         for analysis in analyses:
             if analysis["risk_level"] in ["critical", "high"]:
                 severity = "critical" if analysis["risk_level"] == "critical" else "high"
-                
-                # one finding per risky signal
-                for signal in analysis["signals"][:2]:  # max 2 per package
+                for signal in analysis["signals"][:2]:
                     trust_findings.append(Finding(
                         severity=severity,
                         library=analysis["package"],
@@ -315,7 +278,7 @@ class Engine:
                         message=f"[Trust] {signal}",
                         fix=f"Review {analysis['package']} — trust score: {analysis['trust_score']}/100"
                     ))
-            
+
             elif analysis["risk_level"] == "medium":
                 for signal in analysis["signals"][:1]:
                     trust_findings.append(Finding(
@@ -326,5 +289,40 @@ class Engine:
                         message=f"[Trust] {signal}",
                         fix=f"Monitor {analysis['package']} — trust score: {analysis['trust_score']}/100"
                     ))
-        
+
         return trust_score, trust_findings
+
+    def _get_config_score(self):
+        """Convert config findings to 0-100 score"""
+        if not self.findings:
+            return 100.0
+
+        config_libraries = [
+            'bcrypt', 'jwt', 'jsonwebtoken',
+            'axios', 'mongoose', 'express', 'lodash'
+        ]
+
+        config_findings = [
+            f for f in self.findings
+            if f.library in config_libraries
+            and f.file != 'package.json'
+        ]
+
+        if not config_findings:
+            return 100.0
+
+        penalty = 0
+        for f in config_findings:
+            if f.severity == "critical":
+                penalty += 15
+            elif f.severity == "high":
+                penalty += 10
+            elif f.severity == "medium":
+                penalty += 5
+            elif f.severity == "low":
+                penalty += 2
+
+        # cap at 70 so score never goes below 30
+        penalty = min(penalty, 70)
+
+        return round(max(0, 100 - penalty), 1)

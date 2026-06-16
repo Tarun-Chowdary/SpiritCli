@@ -382,3 +382,42 @@ class Engine:
 
         penalty = min(penalty, 70)
         return round(max(0, 100 - penalty), 1)
+    def _check_licenses(self):
+        from integrations.license_api import LicenseChecker
+        from models import Finding
+        
+        checker = LicenseChecker()
+        results = checker.check_all(self.dependencies)
+        license_score = checker.compute_score(results)
+        license_findings = []
+        
+        for r in results:
+            if r["status"] == "dangerous":
+                license_findings.append(Finding(
+                    severity="critical",
+                    library=r["package"],
+                    file="package.json",
+                    line=0,
+                    message=f"License {r['license']} incompatible with commercial use",
+                    fix=f"Replace {r['package']} with MIT/Apache licensed alternative"
+                ))
+            elif r["status"] == "review":
+                license_findings.append(Finding(
+                    severity="medium",
+                    library=r["package"],
+                    file="package.json",
+                    line=0,
+                    message=f"License {r['license']} requires legal review",
+                    fix=f"Review {r['package']} license with legal team"
+                ))
+            elif r["status"] == "unknown":
+                license_findings.append(Finding(
+                    severity="low",
+                    library=r["package"],
+                    file="package.json",
+                    line=0,
+                    message=f"License unknown for {r['package']} — review required",
+                    fix=f"Verify license for {r['package']}"
+                ))
+        
+        return license_score, license_findings

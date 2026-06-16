@@ -205,6 +205,7 @@ def cli():
       watch         Watch for changes and scan every 5 saves
       report        Generate HTML/JSON security report
       audit         View push attempt audit trail
+      licenses      Check dependency license compliance
       install-hooks Install SpiritCLI as git pre-push hook
 
     \b
@@ -217,6 +218,7 @@ def cli():
       python spirit.py watch demo_apps/vulnerable_bank_app
       python spirit.py report demo_apps/vulnerable_bank_app --html
       python spirit.py audit demo_apps/vulnerable_bank_app
+      python spirit.py licenses demo_apps/vulnerable_bank_app
       python spirit.py install-hooks demo_apps/vulnerable_bank_app
 
     \b
@@ -830,6 +832,64 @@ exit 0
         border_style="green",
         padding=(1, 2)
     ))
-
+@cli.command()
+@click.argument('path', default='.')
+def licenses(path):
+    """Check dependency license compliance"""
+    print_banner()
+    
+    console.print(f"[cyan]Checking licenses for[/cyan] [bold]{path}[/bold]...")
+    
+    with console.status("[cyan]Scanning licenses...[/cyan]", spinner="dots"):
+        engine = Engine(path)
+        engine.dependencies = engine._collect_dependencies()
+        
+        from integrations.license_api import LicenseChecker
+        checker = LicenseChecker()
+        results = checker.check_all(engine.dependencies)
+        score = checker.compute_score(results)
+    
+    # score panel
+    color = "green" if score >= 80 else "yellow" if score >= 60 else "red"
+    console.print(Panel(
+        Align.center(f"[bold {color}]{score}/100 License Compliance[/bold {color}]"),
+        border_style=color,
+        padding=(1, 4)
+    ))
+    
+    # results table
+    table = Table(
+        box=box.ROUNDED, show_header=True,
+        header_style="bold cyan", border_style="cyan"
+    )
+    table.add_column("Package", width=20)
+    table.add_column("Version", width=12)
+    table.add_column("License", width=20)
+    table.add_column("Status", width=12)
+    
+    status_styles = {
+        "safe": ("green", "✅ SAFE"),
+        "review": ("yellow", "⚠ REVIEW"),
+        "dangerous": ("red", "❌ DANGEROUS"),
+        "unknown": ("dim", "? UNKNOWN")
+    }
+    
+    for r in results:
+        color, label = status_styles.get(r["status"], ("white", r["status"]))
+        table.add_row(
+            f"[bold]{r['package']}[/bold]",
+            f"[dim]{r['version']}[/dim]",
+            r["license"],
+            f"[{color}]{label}[/{color}]"
+        )
+    
+    console.print(table)
+    
+    dangerous = [r for r in results if r["status"] == "dangerous"]
+    if dangerous:
+        console.print(
+            f"\n[red]⚠ {len(dangerous)} incompatible license(s) detected — "
+            f"legal review required[/red]"
+        )
 if __name__ == '__main__':
     cli()

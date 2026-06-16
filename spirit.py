@@ -16,7 +16,7 @@ from rich import box
 from rich.rule import Rule
 from rich.columns import Columns
 from core import Engine
-from git.audit_log import log_push_attempt
+from git.audit_log import log_push_attempt, get_audit_log, get_audit_summary
 
 console = Console()
 
@@ -73,8 +73,11 @@ def display_findings(findings):
     console.print()
     console.print(Rule("[bold red]Security Findings[/bold red]", style="red"))
     console.print()
-    table = Table(box=box.ROUNDED, show_header=True, header_style="bold cyan",
-                  border_style="cyan", row_styles=["", "dim"], padding=(0, 1))
+    table = Table(
+        box=box.ROUNDED, show_header=True,
+        header_style="bold cyan", border_style="cyan",
+        row_styles=["", "dim"], padding=(0, 1)
+    )
     table.add_column("Severity", width=12)
     table.add_column("Library", width=14)
     table.add_column("File", width=35)
@@ -83,9 +86,9 @@ def display_findings(findings):
     table.add_column("Fix", width=35)
     severity_styles = {
         "critical": ("red", "🔴 CRITICAL"),
-        "high":     ("orange3", "🟠 HIGH"),
-        "medium":   ("yellow", "🟡 MEDIUM"),
-        "low":      ("blue", "🔵 LOW")
+        "high": ("orange3", "🟠 HIGH"),
+        "medium": ("yellow", "🟡 MEDIUM"),
+        "low": ("blue", "🔵 LOW")
     }
     for f in findings:
         color, label = severity_styles.get(f.severity, ("white", f.severity.upper()))
@@ -102,15 +105,132 @@ def display_findings(findings):
 def run_git_command(args, cwd=None):
     return subprocess.run(args, cwd=cwd, capture_output=True, text=True)
 
+def get_fix_rules():
+    return {
+        "bcrypt": [
+            {
+                "pattern": r'(\.hashSync\s*\([^,]+,\s*)([0-9]+)(\s*\))',
+                "replacement": r'\g<1>12\g<3>',
+                "description": "bcrypt rounds -> 12",
+                "validate": lambda old, new: "12" in new
+            },
+            {
+                "pattern": r'(\.hash\s*\([^,]+,\s*)([0-9]+)(\s*[,)])',
+                "replacement": r'\g<1>12\g<3>',
+                "description": "bcrypt hash rounds -> 12",
+                "validate": lambda old, new: "12" in new
+            }
+        ],
+        "jwt": [
+            {
+                "pattern": r'algorithm\s*:\s*["\']none["\']',
+                "replacement": "algorithm: 'HS256'",
+                "description": "JWT algorithm -> HS256",
+                "validate": lambda old, new: "HS256" in new
+            },
+            {
+                "pattern": r'algorithm\s*:\s*`none`',
+                "replacement": "algorithm: 'HS256'",
+                "description": "JWT algorithm -> HS256",
+                "validate": lambda old, new: "HS256" in new
+            }
+        ],
+        "axios": [
+            {
+                "pattern": r'rejectUnauthorized\s*:\s*false',
+                "replacement": "rejectUnauthorized: true",
+                "description": "axios TLS validation -> enabled",
+                "validate": lambda old, new: "rejectUnauthorized: true" in new
+            },
+            {
+                "pattern": r'NODE_TLS_REJECT_UNAUTHORIZED\s*=\s*["\']0["\']',
+                "replacement": 'NODE_TLS_REJECT_UNAUTHORIZED = "1"',
+                "description": "TLS rejection -> enabled",
+                "validate": lambda old, new: '"1"' in new
+            }
+        ],
+        "mongoose": [
+            {
+                "pattern": r'strict\s*:\s*false',
+                "replacement": "strict: true",
+                "description": "mongoose strict:false -> strict:true",
+                "validate": lambda old, new: "strict: true" in new
+            }
+        ],
+        "express": [
+            {
+                "pattern": r'(cors\s*\(\s*\{[^}]*origin\s*:\s*)["\']?\*["\']?',
+                "replacement": r"\g<1>'https://yourdomain.com'",
+                "description": "express CORS wildcard -> specific origin",
+                "validate": lambda old, new: "yourdomain" in new
+            }
+        ],
+        "lodash": [
+            {
+                "pattern": r'(?:lodash|_)\.merge\s*\(\s*\{\s*\}\s*,\s*(req\.\w+|body|params|query)',
+                "replacement": r'Object.assign({}, \1)',
+                "description": "lodash.merge with user input -> Object.assign",
+                "validate": lambda old, new: "Object.assign" in new
+            },
+            {
+                "pattern": r'lodash\.merge\s*\(\s*\{\s*\}\s*,\s*(\w+)\)',
+                "replacement": r'Object.assign({}, \1)',
+                "description": "lodash.merge -> Object.assign",
+                "validate": lambda old, new: "Object.assign" in new
+            }
+        ]
+    }
+
 @click.group()
 def cli():
-    """SpiritCLI -- Real-Time Dependency Security Intelligence"""
+    """
+    \b
+    ███████╗██████╗ ██╗██████╗ ██╗████████╗ ██████╗██╗     ██╗
+    ██╔════╝██╔══██╗██║██╔══██╗██║╚══██╔══╝██╔════╝██║     ██║
+    ███████╗██████╔╝██║██████╔╝██║   ██║   ██║     ██║     ██║
+    ╚════██║██╔═══╝ ██║██╔══██╗██║   ██║   ██║     ██║     ██║
+    ███████║██║     ██║██║  ██║██║   ██║   ╚██████╗███████╗██║
+    ╚══════╝╚═╝     ╚═╝╚═╝  ╚═╝╚═╝   ╚═╝    ╚═════╝╚══════╝╚═╝
+
+    \b
+    Real-Time Dependency Security Intelligence for Banking
+    Team DrunkenDevs
+
+    \b
+    COMMANDS:
+      scan          Full security scan of a project
+      fix           Auto-remediate detected vulnerabilities
+      push          Security-gated git commit and push
+      diff          Scan only files changed since last commit
+      watch         Watch for changes and scan every 5 saves
+      report        Generate HTML/JSON security report
+      audit         View push attempt audit trail
+      install-hooks Install SpiritCLI as git pre-push hook
+
+    \b
+    EXAMPLES:
+      python spirit.py scan demo_apps/vulnerable_bank_app
+      python spirit.py fix demo_apps/vulnerable_bank_app
+      python spirit.py push demo_apps/vulnerable_bank_app -m "deploy"
+      python spirit.py push demo_apps/vulnerable_bank_app --force
+      python spirit.py diff demo_apps/secure_bank_app
+      python spirit.py watch demo_apps/vulnerable_bank_app
+      python spirit.py report demo_apps/vulnerable_bank_app --html
+      python spirit.py audit demo_apps/vulnerable_bank_app
+      python spirit.py install-hooks demo_apps/vulnerable_bank_app
+
+    \b
+    SECURITY ZONES:
+      SAFE        71-100  Push allowed
+      WARNING     36-70   Acknowledgement required
+      QUARANTINE  0-35    Push blocked
+    """
     pass
 
 @cli.command()
 @click.argument('path', default='.')
 def scan(path):
-    """Run a full security scan"""
+    """Run a full security scan — CVE, config, phantom, freshness, trust"""
     print_banner()
     console.print(f"\n[cyan]Target:[/cyan] [bold]{path}[/bold]")
     console.print()
@@ -128,13 +248,12 @@ def scan(path):
 @cli.command()
 @click.argument('path', default='.')
 @click.option('--message', '-m', default=None, help='Commit message')
-@click.option('--force', '-f', is_flag=True, help='Force push bypassing security gate')
+@click.option('--force', '-f', is_flag=True, help='Bypass security gate (logged)')
 def push(path, message, force):
-    """Security-gated git add, commit and push"""
+    """Security-gated git add, commit and push with 3-zone enforcement"""
     print_banner()
     abs_path = os.path.abspath(path)
 
-    # ── FORCE PUSH ──────────────────────────────────────────
     if force:
         console.print("[red]⚠ FORCE PUSH ACTIVATED — Security gate bypassed[/red]")
         confirmed = click.confirm(
@@ -144,37 +263,28 @@ def push(path, message, force):
         if not confirmed:
             console.print("[yellow]Force push cancelled.[/yellow]")
             return
-
         if not message:
             message = click.prompt("Commit message", default="force push")
-
         try:
             subprocess.run(['git', 'add', '.'], cwd=abs_path, check=True)
-
-            # check if anything to commit
             status = run_git_command(['git', 'status', '--porcelain'], cwd=abs_path)
             if status.stdout.strip():
                 subprocess.run(['git', 'commit', '-m', message], cwd=abs_path, check=True)
             else:
-                console.print("[dim]Nothing to commit — skipping commit step[/dim]")
-
+                console.print("[dim]Nothing to commit[/dim]")
             result = run_git_command(['git', 'push', '--force'], cwd=abs_path)
-
             if result.returncode == 0:
                 console.print("[yellow]⚠ Force push successful — security was bypassed[/yellow]")
                 console.print("[yellow]This action has been logged for audit.[/yellow]")
-                log_push_attempt(abs_path, 0, "FORCE_PUSH", "FORCE_PUSH", message)
             elif "No configured push destination" in result.stderr:
-                console.print("[yellow]⚠ Committed — no remote configured to push[/yellow]")
-                log_push_attempt(abs_path, 0, "FORCE_PUSH", "FORCE_PUSH", message)
+                console.print("[yellow]⚠ Committed — no remote configured[/yellow]")
             else:
                 console.print(f"[red]Push failed: {result.stderr}[/red]")
-
+            log_push_attempt(abs_path, 0, "FORCE_PUSH", "FORCE_PUSH", message)
         except subprocess.CalledProcessError as e:
             console.print(f"[red]Git error: {e}[/red]")
         return
 
-    # ── CHECK GIT INITIALIZED ───────────────────────────────
     if not os.path.exists(os.path.join(abs_path, '.git')):
         console.print("[yellow]Git not initialized in this directory.[/yellow]")
         init = click.confirm("Initialize git repository?", default=True)
@@ -185,7 +295,6 @@ def push(path, message, force):
             console.print("[red]Aborted.[/red]")
             return
 
-    # ── SECURITY SCAN ───────────────────────────────────────
     console.print(f"\n[cyan]Running security scan on[/cyan] [bold]{path}[/bold]...")
     with console.status("[cyan]Scanning...[/cyan]", spinner="dots"):
         engine = Engine(abs_path)
@@ -199,7 +308,6 @@ def push(path, message, force):
     ]
     display_score(report.score)
 
-    # ── QUARANTINE — HARD BLOCK ─────────────────────────────
     if zone == "QUARANTINE" or critical_findings:
         console.print(Panel(
             Align.center(
@@ -210,8 +318,7 @@ def push(path, message, force):
                 f"Or use [cyan]spirit push --force[/cyan] to bypass (logged)[/yellow]"
             ),
             title="[red]Security Gate — Push Rejected[/red]",
-            border_style="red",
-            padding=(1, 4)
+            border_style="red", padding=(1, 4)
         ))
         console.print("\n[red]Critical Findings:[/red]")
         for f in critical_findings:
@@ -219,7 +326,6 @@ def push(path, message, force):
         log_push_attempt(abs_path, score, zone, "BLOCKED")
         return
 
-    # ── WARNING — ACKNOWLEDGEMENT REQUIRED ──────────────────
     elif zone == "WARNING":
         console.print(Panel(
             Align.center(
@@ -228,13 +334,11 @@ def push(path, message, force):
                 f"[dim]Developer acknowledgement required.[/dim]"
             ),
             title="[yellow]Security Gate — Review Required[/yellow]",
-            border_style="yellow",
-            padding=(1, 4)
+            border_style="yellow", padding=(1, 4)
         ))
         console.print("\n[yellow]Active Findings:[/yellow]")
         for f in report.findings[:5]:
             console.print(f"  [yellow]●[/yellow] [bold]{f.library}[/bold] — {f.message[:70]}")
-
         confirmed = click.confirm(
             "\nI have reviewed all findings and accept the risk. Proceed with push?",
             default=False
@@ -244,9 +348,9 @@ def push(path, message, force):
             console.print(f"[yellow]Tip: Run [cyan]spirit fix {path}[/cyan] to fix issues first[/yellow]")
             log_push_attempt(abs_path, score, zone, "CANCELLED")
             return
+        log_push_attempt(abs_path, score, zone, "WARNING_ACCEPTED", message or "")
         console.print("[yellow]Push proceeding with acknowledged risk.[/yellow]")
 
-    # ── SAFE — PROCEED ──────────────────────────────────────
     else:
         console.print(Panel(
             Align.center(
@@ -255,29 +359,23 @@ def push(path, message, force):
                 f"[dim]All security checks passed.[/dim]"
             ),
             title="[green]Security Gate — Approved[/green]",
-            border_style="green",
-            padding=(1, 4)
+            border_style="green", padding=(1, 4)
         ))
 
-    # ── GIT ADD, COMMIT, PUSH ───────────────────────────────
     if not message:
         message = click.prompt("\nCommit message", default="security-verified commit")
 
     try:
         console.print("\n[cyan]Running git add .[/cyan]")
         subprocess.run(['git', 'add', '.'], cwd=abs_path, check=True)
-
-        # check if anything to commit
         status = run_git_command(['git', 'status', '--porcelain'], cwd=abs_path)
         if status.stdout.strip():
             console.print(f"[cyan]Committing: {message}[/cyan]")
             subprocess.run(['git', 'commit', '-m', message], cwd=abs_path, check=True)
         else:
             console.print("[dim]Nothing new to commit[/dim]")
-
         console.print("[cyan]Pushing to remote...[/cyan]")
         result = run_git_command(['git', 'push'], cwd=abs_path)
-
         if result.returncode == 0:
             log_push_attempt(abs_path, score, zone, "APPROVED", message)
             console.print(Panel(
@@ -285,8 +383,7 @@ def push(path, message, force):
                     f"[bold green]✅ Push Successful[/bold green]\n\n"
                     f"[green]Score: {score}/100 — {zone}[/green]"
                 ),
-                border_style="green",
-                padding=(1, 4)
+                border_style="green", padding=(1, 4)
             ))
         elif "No configured push destination" in result.stderr:
             log_push_attempt(abs_path, score, zone, "APPROVED", message)
@@ -296,19 +393,17 @@ def push(path, message, force):
                     f"[yellow]Score: {score}/100 — {zone}[/yellow]\n\n"
                     f"[dim]No remote configured — add with: git remote add origin <url>[/dim]"
                 ),
-                border_style="yellow",
-                padding=(1, 4)
+                border_style="yellow", padding=(1, 4)
             ))
         else:
             console.print(f"[red]Push failed: {result.stderr}[/red]")
-
     except subprocess.CalledProcessError as e:
         console.print(f"[red]Git error: {e}[/red]")
 
 @cli.command()
 @click.argument('path', default='.')
 def fix(path):
-    """Run auto-remediation"""
+    """Auto-remediate bcrypt, JWT, axios, mongoose, express, lodash issues"""
     print_banner()
     with console.status("[cyan]Scanning for fixable issues...[/cyan]", spinner="dots"):
         engine = Engine(path)
@@ -335,84 +430,8 @@ def fix(path):
     console.print(Rule("[bold cyan]Auto-Remediation Engine[/bold cyan]", style="cyan"))
     console.print(f"\n[bold]Found [red]{len(fixable)}[/red] fixable issues[/bold]\n")
 
-    fix_rules = {
-    "bcrypt": [
-        {
-            "pattern": r'(\.hashSync\s*\([^,]+,\s*)([0-9]+)(\s*\))',
-            "replacement": r'\g<1>12\g<3>',
-            "description": "bcrypt rounds -> 12",
-            "validate": lambda old, new: "12" in new
-        },
-        {
-            "pattern": r'(\.hash\s*\([^,]+,\s*)([0-9]+)(\s*[,)])',
-            "replacement": r'\g<1>12\g<3>',
-            "description": "bcrypt hash rounds -> 12",
-            "validate": lambda old, new: "12" in new
-        }
-    ],
-    "jwt": [
-        {
-            "pattern": r'algorithm\s*:\s*["\']none["\']',
-            "replacement": "algorithm: 'HS256'",
-            "description": "JWT algorithm -> HS256",
-            "validate": lambda old, new: "HS256" in new
-        },
-        {
-            "pattern": r'algorithm\s*:\s*`none`',
-            "replacement": "algorithm: 'HS256'",
-            "description": "JWT algorithm -> HS256",
-            "validate": lambda old, new: "HS256" in new
-        }
-    ],
-    "axios": [
-        {
-            "pattern": r'rejectUnauthorized\s*:\s*false',
-            "replacement": "rejectUnauthorized: true",
-            "description": "axios TLS validation -> enabled",
-            "validate": lambda old, new: "rejectUnauthorized: true" in new
-        },
-        {
-            "pattern": r'NODE_TLS_REJECT_UNAUTHORIZED\s*=\s*["\']0["\']',
-            "replacement": 'NODE_TLS_REJECT_UNAUTHORIZED = "1"',
-            "description": "TLS rejection -> enabled",
-            "validate": lambda old, new: '"1"' in new
-        }
-    ],
-    "mongoose": [
-        {
-            # fixes: {strict: false} -> {strict: true}
-            "pattern": r'strict\s*:\s*false',
-            "replacement": "strict: true",
-            "description": "mongoose strict:false -> strict:true",
-            "validate": lambda old, new: "strict: true" in new
-        }
-    ],
-    "express": [
-        {
-            # fixes: cors({origin: '*'}) -> cors({origin: false})
-            "pattern": r'(cors\s*\(\s*\{[^}]*origin\s*:\s*)["\']?\*["\']?',
-            "replacement": r"\g<1>'https://yourdomain.com'",
-            "description": "express CORS wildcard -> specific origin",
-            "validate": lambda old, new: "*" not in new or "yourdomain" in new
-        }
-    ],
-    "lodash": [
-        {
-            # fixes: lodash.merge({}, req.body) -> use spread operator
-            "pattern": r'(?:lodash|_)\.merge\s*\(\s*\{\s*\}\s*,\s*(req\.\w+|body|params|query)',
-            "replacement": r'Object.assign({}, \1)',
-            "description": "lodash.merge with user input -> Object.assign (safe)",
-            "validate": lambda old, new: "Object.assign" in new
-        },
-        {
-            # alternative: lodash.merge({}, userInput)
-            "pattern": r'lodash\.merge\s*\(\s*\{\s*\}\s*,\s*(\w+)\)',
-            "replacement": r'Object.assign({}, \1)',
-            "description": "lodash.merge -> Object.assign (prototype pollution safe)",
-            "validate": lambda old, new: "Object.assign" in new
-        }
-    ]
-}
+    fix_rules = get_fix_rules()
+
     files_to_fix = {}
     for finding in fixable:
         if finding.file not in files_to_fix:
@@ -436,7 +455,6 @@ def fix(path):
                 lib = finding.library
                 if lib not in fix_rules:
                     continue
-
                 fix_applied = False
                 for rule in fix_rules[lib]:
                     try:
@@ -451,12 +469,17 @@ def fix(path):
                                 fix_applied = True
                                 break
                             else:
-                                failed_fixes.append(f"{lib} — validation failed after fix")
+                                failed_fixes.append(f"{lib} — validation failed")
                     except re.error as e:
                         failed_fixes.append(f"{lib} — regex error: {e}")
-
                 if not fix_applied and lib in fix_rules:
-                    failed_fixes.append(f"{lib} — pattern not matched (may need manual fix)")
+                    failed_fixes.append(f"{lib} — pattern not matched (manual fix needed)")
+
+            # show diff before confirm
+            if applied_fixes:
+                from remediation.diff_viewer import DiffViewer
+                viewer = DiffViewer()
+                viewer.show(original, modified, filepath)
 
             if applied_fixes or failed_fixes:
                 content_lines = []
@@ -469,7 +492,11 @@ def fix(path):
                     content_lines.append("[yellow]Could not auto-fix:[/yellow]")
                     for fail in failed_fixes:
                         content_lines.append(f"  [yellow]![/yellow] {fail}")
-                console.print(Panel("\n".join(content_lines), title=f"[cyan]{filepath}[/cyan]", border_style="cyan"))
+                console.print(Panel(
+                    "\n".join(content_lines),
+                    title=f"[cyan]{filepath}[/cyan]",
+                    border_style="cyan"
+                ))
 
             if applied_fixes:
                 if click.confirm(f"Apply {len(applied_fixes)} fix(es) to {filepath}?"):
@@ -525,12 +552,74 @@ def fix(path):
             padding=(1, 4)
         ))
     else:
-        console.print("[yellow]No fixes were applied. Review failed fixes manually.[/yellow]")
+        console.print("[yellow]No fixes applied. Review failed fixes manually.[/yellow]")
+
+@cli.command()
+@click.argument('path', default='.')
+def diff(path):
+    """Scan only files changed since last commit — fast incremental check"""
+    print_banner()
+    from git.diff_scanner import DiffScanner
+
+    console.print(f"[cyan]Scanning changed files in[/cyan] [bold]{path}[/bold]...")
+
+    scanner = DiffScanner()
+    findings, changed_files = scanner.scan_diff(path)
+
+    if not changed_files:
+        console.print(Panel(
+            Align.center("[yellow]No changed files detected.[/yellow]"),
+            border_style="yellow"
+        ))
+        return
+
+    console.print(f"\n[cyan]Changed files ({len(changed_files)}):[/cyan]")
+    for f in changed_files:
+        console.print(f"  [dim]→[/dim] {f}")
+    console.print()
+
+    if not findings:
+        console.print(Panel(
+            Align.center("[bold green]✅ No security issues in changed files[/bold green]"),
+            border_style="green"
+        ))
+        return
+
+    console.print(Rule("[bold red]Issues in Changed Files[/bold red]", style="red"))
+    table = Table(
+        box=box.ROUNDED, show_header=True,
+        header_style="bold cyan", border_style="cyan"
+    )
+    table.add_column("Severity", width=12)
+    table.add_column("Library", width=14)
+    table.add_column("File", width=40)
+    table.add_column("Line", width=6)
+    table.add_column("Issue", width=50)
+    table.add_column("Fix", width=30)
+    severity_styles = {
+        "critical": ("red", "🔴 CRITICAL"),
+        "high": ("orange3", "🟠 HIGH"),
+        "medium": ("yellow", "🟡 MEDIUM"),
+        "low": ("blue", "🔵 LOW")
+    }
+    for f in findings:
+        color, label = severity_styles.get(f.severity, ("white", f.severity.upper()))
+        table.add_row(
+            f"[{color}]{label}[/{color}]",
+            f"[bold]{f.library}[/bold]",
+            f"[dim]{f.file}[/dim]",
+            f"[cyan]{f.line}[/cyan]",
+            f.message,
+            f"[green]{f.fix or 'Review manually'}[/green]"
+        )
+    console.print(table)
+    console.print(f"\n[red]⚠ {len(findings)} issue(s) found in changed files[/red]")
+    console.print(f"[yellow]Run [cyan]spirit fix {path}[/cyan] to auto-remediate[/yellow]")
 
 @cli.command()
 @click.argument('path', default='.')
 def watch(path):
-    """Watch for file changes and scan incrementally"""
+    """Watch for file changes and scan every 5 saves"""
     print_banner()
     console.print(f"[cyan]Watching[/cyan] [bold]{path}[/bold] for changes...")
     console.print("[dim]Scans every 5 saves — Press Ctrl+C to stop[/dim]\n")
@@ -547,14 +636,12 @@ def watch(path):
                 return
             if self.scanning:
                 return
-
             self.save_count += 1
             remaining = 5 - self.save_count
             console.print(
                 f"[dim]Save detected ({self.save_count}/5) — "
                 f"{remaining} more save(s) until next scan[/dim]"
             )
-
             if self.save_count >= 5:
                 self.scanning = True
                 self.save_count = 0
@@ -587,7 +674,7 @@ def watch(path):
 @click.option('--json', 'export_json', is_flag=True, help='Export JSON report')
 @click.option('--html', 'export_html', is_flag=True, help='Export HTML report')
 def report(path, export_json, export_html):
-    """Generate security report"""
+    """Generate terminal, HTML, and JSON security reports with trend analysis"""
     print_banner()
     from reporting import ReportGenerator, HTMLExporter, JSONExporter
 
@@ -624,10 +711,86 @@ def report(path, export_json, export_html):
         path_out = exporter.export(report_data)
         console.print(f"\n[green]JSON report saved:[/green] {path_out}")
 
+@cli.command()
+@click.argument('path', default='.')
+@click.option('--all', 'show_all', is_flag=True, help='Show all paths')
+def audit(path, show_all):
+    """View complete push audit trail — approved, blocked, force pushes"""
+    print_banner()
+
+    target = None if show_all else os.path.abspath(path)
+    logs = get_audit_log(path=target, limit=20)
+    summary = get_audit_summary(path=target)
+
+    if not logs:
+        console.print("[yellow]No audit records found. Run spirit push first.[/yellow]")
+        return
+
+    approved = summary.get("APPROVED", 0)
+    blocked = summary.get("BLOCKED", 0)
+    force = summary.get("FORCE_PUSH", 0)
+    warned = summary.get("WARNING_ACCEPTED", 0)
+    cancelled = summary.get("CANCELLED", 0)
+
+    console.print(Panel(
+        f"[green]Approved: {approved}[/green]   "
+        f"[yellow]Warned: {warned}[/yellow]   "
+        f"[red]Blocked: {blocked}[/red]   "
+        f"[red]Force Push: {force}[/red]   "
+        f"[dim]Cancelled: {cancelled}[/dim]",
+        title="[cyan]Push Audit Summary[/cyan]",
+        border_style="cyan"
+    ))
+    console.print()
+
+    table = Table(
+        box=box.ROUNDED, show_header=True,
+        header_style="bold cyan", border_style="cyan"
+    )
+    table.add_column("Timestamp", width=20)
+    table.add_column("Score", width=10)
+    table.add_column("Zone", width=12)
+    table.add_column("Action", width=18)
+    table.add_column("User", width=12)
+    table.add_column("Message", width=30)
+
+    action_colors = {
+        "APPROVED": "green",
+        "WARNING_ACCEPTED": "yellow",
+        "BLOCKED": "red",
+        "FORCE_PUSH": "red",
+        "CANCELLED": "dim"
+    }
+    zone_colors = {
+        "SAFE": "green",
+        "WARNING": "yellow",
+        "QUARANTINE": "red",
+        "FORCE_PUSH": "red"
+    }
+
+    for row in logs:
+        path_val, score, zone, action, message, user, timestamp = row
+        action_color = action_colors.get(action, "white")
+        zone_color = zone_colors.get(zone, "white")
+        table.add_row(
+            f"[dim]{timestamp[:19]}[/dim]",
+            f"[bold]{score}/100[/bold]",
+            f"[{zone_color}]{zone}[/{zone_color}]",
+            f"[{action_color}]{action}[/{action_color}]",
+            f"[dim]{user}[/dim]",
+            f"[dim]{message[:30] if message else '—'}[/dim]"
+        )
+    console.print(table)
+
+    if force > 0:
+        console.print(
+            f"\n[red]⚠ {force} force push(es) detected — security was bypassed[/red]"
+        )
+
 @cli.command('install-hooks')
 @click.argument('path', default='.')
 def install_hooks(path):
-    """Install SpiritCLI as a git pre-push hook"""
+    """Install SpiritCLI as git pre-push hook in target repository"""
     abs_path = os.path.abspath(path)
     git_dir = os.path.join(abs_path, '.git')
 
@@ -667,166 +830,6 @@ exit 0
         border_style="green",
         padding=(1, 2)
     ))
-
-@cli.command()
-@click.argument('path', default='.')
-@click.option('--all', 'show_all', is_flag=True, help='Show all paths')
-def audit(path, show_all):
-    """Show push audit trail"""
-    print_banner()
-    from git.audit_log import get_audit_log, get_audit_summary
-
-    target = None if show_all else os.path.abspath(path)
-    logs = get_audit_log(path=target, limit=20)
-    summary = get_audit_summary(path=target)
-
-    if not logs:
-        console.print("[yellow]No audit records found. Run spirit push first.[/yellow]")
-        return
-
-    approved = summary.get("APPROVED", 0)
-    blocked = summary.get("BLOCKED", 0)
-    force = summary.get("FORCE_PUSH", 0)
-    warned = summary.get("WARNING_ACCEPTED", 0)
-    cancelled = summary.get("CANCELLED", 0)
-
-    console.print(Panel(
-        f"[green]Approved: {approved}[/green]   "
-        f"[yellow]Warned: {warned}[/yellow]   "
-        f"[red]Blocked: {blocked}[/red]   "
-        f"[red]Force Push: {force}[/red]   "
-        f"[dim]Cancelled: {cancelled}[/dim]",
-        title="[cyan]Push Audit Summary[/cyan]",
-        border_style="cyan"
-    ))
-    console.print()
-
-    table = Table(box=box.ROUNDED, show_header=True,
-                  header_style="bold cyan", border_style="cyan")
-    table.add_column("Timestamp", width=20)
-    table.add_column("Score", width=10)
-    table.add_column("Zone", width=12)
-    table.add_column("Action", width=18)
-    table.add_column("User", width=12)
-    table.add_column("Message", width=30)
-
-    action_colors = {
-        "APPROVED": "green",
-        "WARNING_ACCEPTED": "yellow",
-        "BLOCKED": "red",
-        "FORCE_PUSH": "red",
-        "CANCELLED": "dim"
-    }
-    zone_colors = {
-        "SAFE": "green",
-        "WARNING": "yellow",
-        "QUARANTINE": "red",
-        "FORCE_PUSH": "red"
-    }
-
-    for row in logs:
-        path_val, score, zone, action, message, user, timestamp = row
-        action_color = action_colors.get(action, "white")
-        zone_color = zone_colors.get(zone, "white")
-        table.add_row(
-            f"[dim]{timestamp[:19]}[/dim]",
-            f"[bold]{score}/100[/bold]",
-            f"[{zone_color}]{zone}[/{zone_color}]",
-            f"[{action_color}]{action}[/{action_color}]",
-            f"[dim]{user}[/dim]",
-            f"[dim]{message[:30] if message else '—'}[/dim]"
-        )
-
-    console.print(table)
-
-    if force > 0:
-        console.print(
-            f"\n[red]⚠ {force} force push(es) detected — "
-            f"security was bypassed[/red]"
-        )
-
-@cli.command()
-@click.argument('path', default='.')
-def diff(path):
-    """Scan only files changed since last commit"""
-    print_banner()
-    
-    import sys
-    sys.path.insert(0, 'spirit')
-    from git.diff_scanner import DiffScanner
-    
-    console.print(f"[cyan]Scanning changed files in[/cyan] [bold]{path}[/bold]...")
-    
-    scanner = DiffScanner()
-    findings, changed_files = scanner.scan_diff(path)
-    
-    if not changed_files:
-        console.print(Panel(
-            Align.center("[yellow]No changed files detected.[/yellow]"),
-            border_style="yellow"
-        ))
-        return
-    
-    # show changed files
-    console.print(f"\n[cyan]Changed files ({len(changed_files)}):[/cyan]")
-    for f in changed_files:
-        console.print(f"  [dim]→[/dim] {f}")
-    
-    console.print()
-    
-    if not findings:
-        console.print(Panel(
-            Align.center(
-                "[bold green]✅ No security issues in changed files[/bold green]"
-            ),
-            border_style="green"
-        ))
-        return
-    
-    # show findings
-    console.print(Rule("[bold red]Issues in Changed Files[/bold red]", style="red"))
-    
-    table = Table(
-        box=box.ROUNDED,
-        show_header=True,
-        header_style="bold cyan",
-        border_style="cyan"
-    )
-    
-    table.add_column("Severity", width=12)
-    table.add_column("Library", width=14)
-    table.add_column("File", width=40)
-    table.add_column("Line", width=6)
-    table.add_column("Issue", width=50)
-    table.add_column("Fix", width=30)
-    
-    severity_styles = {
-        "critical": ("red", "🔴 CRITICAL"),
-        "high": ("orange3", "🟠 HIGH"),
-        "medium": ("yellow", "🟡 MEDIUM"),
-        "low": ("blue", "🔵 LOW")
-    }
-    
-    for f in findings:
-        color, label = severity_styles.get(
-            f.severity, ("white", f.severity.upper())
-        )
-        table.add_row(
-            f"[{color}]{label}[/{color}]",
-            f"[bold]{f.library}[/bold]",
-            f"[dim]{f.file}[/dim]",
-            f"[cyan]{f.line}[/cyan]",
-            f.message,
-            f"[green]{f.fix or 'Review manually'}[/green]"
-        )
-    
-    console.print(table)
-    console.print(
-        f"\n[red]⚠ {len(findings)} issue(s) found in changed files[/red]"
-    )
-    console.print(
-        f"[yellow]Run [cyan]spirit fix {path}[/cyan] to auto-remediate[/yellow]"
-    )
 
 if __name__ == '__main__':
     cli()

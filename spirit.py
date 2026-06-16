@@ -316,7 +316,7 @@ def fix(path):
 
     fixable = [
         f for f in report.findings
-        if f.library in ['bcrypt', 'jwt', 'axios']
+        if f.library in ['bcrypt', 'jwt', 'axios', 'mongoose', 'express', 'lodash']
         and f.file != 'package.json'
         and os.path.exists(f.file)
     ]
@@ -336,50 +336,83 @@ def fix(path):
     console.print(f"\n[bold]Found [red]{len(fixable)}[/red] fixable issues[/bold]\n")
 
     fix_rules = {
-        "bcrypt": [
-            {
-                "pattern": r'(\.hashSync\s*\([^,]+,\s*)([0-9]+)(\s*\))',
-                "replacement": r'\g<1>12\g<3>',
-                "description": "bcrypt rounds → 12",
-                "validate": lambda old, new: "12" in new
-            },
-            {
-                "pattern": r'(\.hash\s*\([^,]+,\s*)([0-9]+)(\s*[,)])',
-                "replacement": r'\g<1>12\g<3>',
-                "description": "bcrypt hash rounds → 12",
-                "validate": lambda old, new: "12" in new
-            }
-        ],
-        "jwt": [
-            {
-                "pattern": r'algorithm\s*:\s*["\']none["\']',
-                "replacement": "algorithm: 'HS256'",
-                "description": "JWT algorithm → HS256",
-                "validate": lambda old, new: "HS256" in new
-            },
-            {
-                "pattern": r'algorithm\s*:\s*`none`',
-                "replacement": "algorithm: 'HS256'",
-                "description": "JWT algorithm → HS256",
-                "validate": lambda old, new: "HS256" in new
-            }
-        ],
-        "axios": [
-            {
-                "pattern": r'rejectUnauthorized\s*:\s*false',
-                "replacement": "rejectUnauthorized: true",
-                "description": "axios TLS validation → enabled",
-                "validate": lambda old, new: "rejectUnauthorized: true" in new
-            },
-            {
-                "pattern": r'NODE_TLS_REJECT_UNAUTHORIZED\s*=\s*["\']0["\']',
-                "replacement": 'NODE_TLS_REJECT_UNAUTHORIZED = "1"',
-                "description": "TLS rejection → enabled",
-                "validate": lambda old, new: '"1"' in new
-            }
-        ]
-    }
-
+    "bcrypt": [
+        {
+            "pattern": r'(\.hashSync\s*\([^,]+,\s*)([0-9]+)(\s*\))',
+            "replacement": r'\g<1>12\g<3>',
+            "description": "bcrypt rounds -> 12",
+            "validate": lambda old, new: "12" in new
+        },
+        {
+            "pattern": r'(\.hash\s*\([^,]+,\s*)([0-9]+)(\s*[,)])',
+            "replacement": r'\g<1>12\g<3>',
+            "description": "bcrypt hash rounds -> 12",
+            "validate": lambda old, new: "12" in new
+        }
+    ],
+    "jwt": [
+        {
+            "pattern": r'algorithm\s*:\s*["\']none["\']',
+            "replacement": "algorithm: 'HS256'",
+            "description": "JWT algorithm -> HS256",
+            "validate": lambda old, new: "HS256" in new
+        },
+        {
+            "pattern": r'algorithm\s*:\s*`none`',
+            "replacement": "algorithm: 'HS256'",
+            "description": "JWT algorithm -> HS256",
+            "validate": lambda old, new: "HS256" in new
+        }
+    ],
+    "axios": [
+        {
+            "pattern": r'rejectUnauthorized\s*:\s*false',
+            "replacement": "rejectUnauthorized: true",
+            "description": "axios TLS validation -> enabled",
+            "validate": lambda old, new: "rejectUnauthorized: true" in new
+        },
+        {
+            "pattern": r'NODE_TLS_REJECT_UNAUTHORIZED\s*=\s*["\']0["\']',
+            "replacement": 'NODE_TLS_REJECT_UNAUTHORIZED = "1"',
+            "description": "TLS rejection -> enabled",
+            "validate": lambda old, new: '"1"' in new
+        }
+    ],
+    "mongoose": [
+        {
+            # fixes: {strict: false} -> {strict: true}
+            "pattern": r'strict\s*:\s*false',
+            "replacement": "strict: true",
+            "description": "mongoose strict:false -> strict:true",
+            "validate": lambda old, new: "strict: true" in new
+        }
+    ],
+    "express": [
+        {
+            # fixes: cors({origin: '*'}) -> cors({origin: false})
+            "pattern": r'(cors\s*\(\s*\{[^}]*origin\s*:\s*)["\']?\*["\']?',
+            "replacement": r"\g<1>'https://yourdomain.com'",
+            "description": "express CORS wildcard -> specific origin",
+            "validate": lambda old, new: "*" not in new or "yourdomain" in new
+        }
+    ],
+    "lodash": [
+        {
+            # fixes: lodash.merge({}, req.body) -> use spread operator
+            "pattern": r'(?:lodash|_)\.merge\s*\(\s*\{\s*\}\s*,\s*(req\.\w+|body|params|query)',
+            "replacement": r'Object.assign({}, \1)',
+            "description": "lodash.merge with user input -> Object.assign (safe)",
+            "validate": lambda old, new: "Object.assign" in new
+        },
+        {
+            # alternative: lodash.merge({}, userInput)
+            "pattern": r'lodash\.merge\s*\(\s*\{\s*\}\s*,\s*(\w+)\)',
+            "replacement": r'Object.assign({}, \1)',
+            "description": "lodash.merge -> Object.assign (prototype pollution safe)",
+            "validate": lambda old, new: "Object.assign" in new
+        }
+    ]
+}
     files_to_fix = {}
     for finding in fixable:
         if finding.file not in files_to_fix:
@@ -711,6 +744,89 @@ def audit(path, show_all):
             f"\n[red]⚠ {force} force push(es) detected — "
             f"security was bypassed[/red]"
         )
+
+@cli.command()
+@click.argument('path', default='.')
+def diff(path):
+    """Scan only files changed since last commit"""
+    print_banner()
+    
+    import sys
+    sys.path.insert(0, 'spirit')
+    from git.diff_scanner import DiffScanner
+    
+    console.print(f"[cyan]Scanning changed files in[/cyan] [bold]{path}[/bold]...")
+    
+    scanner = DiffScanner()
+    findings, changed_files = scanner.scan_diff(path)
+    
+    if not changed_files:
+        console.print(Panel(
+            Align.center("[yellow]No changed files detected.[/yellow]"),
+            border_style="yellow"
+        ))
+        return
+    
+    # show changed files
+    console.print(f"\n[cyan]Changed files ({len(changed_files)}):[/cyan]")
+    for f in changed_files:
+        console.print(f"  [dim]→[/dim] {f}")
+    
+    console.print()
+    
+    if not findings:
+        console.print(Panel(
+            Align.center(
+                "[bold green]✅ No security issues in changed files[/bold green]"
+            ),
+            border_style="green"
+        ))
+        return
+    
+    # show findings
+    console.print(Rule("[bold red]Issues in Changed Files[/bold red]", style="red"))
+    
+    table = Table(
+        box=box.ROUNDED,
+        show_header=True,
+        header_style="bold cyan",
+        border_style="cyan"
+    )
+    
+    table.add_column("Severity", width=12)
+    table.add_column("Library", width=14)
+    table.add_column("File", width=40)
+    table.add_column("Line", width=6)
+    table.add_column("Issue", width=50)
+    table.add_column("Fix", width=30)
+    
+    severity_styles = {
+        "critical": ("red", "🔴 CRITICAL"),
+        "high": ("orange3", "🟠 HIGH"),
+        "medium": ("yellow", "🟡 MEDIUM"),
+        "low": ("blue", "🔵 LOW")
+    }
+    
+    for f in findings:
+        color, label = severity_styles.get(
+            f.severity, ("white", f.severity.upper())
+        )
+        table.add_row(
+            f"[{color}]{label}[/{color}]",
+            f"[bold]{f.library}[/bold]",
+            f"[dim]{f.file}[/dim]",
+            f"[cyan]{f.line}[/cyan]",
+            f.message,
+            f"[green]{f.fix or 'Review manually'}[/green]"
+        )
+    
+    console.print(table)
+    console.print(
+        f"\n[red]⚠ {len(findings)} issue(s) found in changed files[/red]"
+    )
+    console.print(
+        f"[yellow]Run [cyan]spirit fix {path}[/cyan] to auto-remediate[/yellow]"
+    )
 
 if __name__ == '__main__':
     cli()

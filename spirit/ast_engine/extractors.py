@@ -87,14 +87,27 @@ class JSExtractor:
         findings = []
         
         # strict: false
-        pattern = r'strict\s*:\s*false'
-        for match in re.finditer(pattern, source):
+        pattern1 = r'strict\s*:\s*false'
+        for match in re.finditer(pattern1, source):
             findings.append({
                 "library": "mongoose",
                 "parameter": "strict",
                 "value": "false",
                 "line": source[:match.start()].count('\n') + 1
             })
+        
+        # new mongoose.Schema without validation
+        pattern2 = r'new\s+mongoose\.Schema\s*\(\s*\{'
+        for match in re.finditer(pattern2, source):
+            # check if required or validation is missing nearby
+            nearby = source[match.start():match.start()+200]
+            if 'required' not in nearby and 'validate' not in nearby:
+                findings.append({
+                    "library": "mongoose",
+                    "parameter": "validation",
+                    "value": "missing",
+                    "line": source[:match.start()].count('\n') + 1
+                })
         
         return findings
 

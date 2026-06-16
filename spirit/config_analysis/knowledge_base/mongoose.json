@@ -1,13 +1,19 @@
 {
     "library": "mongoose",
     "patterns": {
-        "no_strict": {
+        "strict_false": {
             "severity": "high",
-            "message": "Mongoose strict mode disabled — allows arbitrary field injection"
+            "parameter": "strict",
+            "unsafe_value": "false",
+            "message": "Mongoose strict:false -- allows arbitrary field injection",
+            "fix": "Remove strict:false or set strict:true"
         },
         "no_validation": {
             "severity": "medium",
-            "message": "Schema missing validation — arbitrary data can be stored"
+            "parameter": "validation",
+            "unsafe_value": "missing",
+            "message": "Mongoose schema missing required/validation -- arbitrary data stored",
+            "fix": "Add required:true and validation to schema fields"
         }
     }
 }

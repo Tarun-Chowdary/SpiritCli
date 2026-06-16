@@ -19,6 +19,12 @@ class ConfigAnalyzer:
                 raw_findings = self.rule_engine.evaluate_jwt(config)
             elif library == 'axios':
                 raw_findings = self.rule_engine.evaluate_axios(config)
+            elif library == 'mongoose':
+                raw_findings = self.rule_engine.evaluate_mongoose(config)
+            elif library == 'express':
+                raw_findings = self.rule_engine.evaluate_express(config)
+            elif library == 'lodash':
+                raw_findings = self.rule_engine.evaluate_lodash(config)
             
             for rf in raw_findings:
                 findings.append(Finding(

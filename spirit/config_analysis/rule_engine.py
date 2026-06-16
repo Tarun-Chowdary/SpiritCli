@@ -74,3 +74,87 @@ class RuleEngine:
             })
         
         return findings
+    def evaluate_mongoose(self, extracted):
+        findings = []
+        rules = self.knowledge_base.get('mongoose', {})
+        patterns = rules.get('patterns', {})
+        
+        parameter = extracted.get('parameter')
+        value = extracted.get('value')
+        
+        if parameter == 'strict' and value == 'false':
+            pattern = patterns.get('strict_false', {})
+            findings.append({
+                "severity": pattern.get('severity', 'high'),
+                "library": "mongoose",
+                "parameter": "strict",
+                "value": "false",
+                "message": pattern.get('message', 'Mongoose strict:false — allows arbitrary field injection'),
+                "fix": pattern.get('fix', 'Remove strict:false or set strict:true')
+            })
+        
+        elif parameter == 'validation' and value == 'missing':
+            pattern = patterns.get('no_validation', {})
+            findings.append({
+                "severity": pattern.get('severity', 'medium'),
+                "library": "mongoose",
+                "parameter": "validation",
+                "value": "missing",
+                "message": pattern.get('message', 'Mongoose schema missing validation'),
+                "fix": pattern.get('fix', 'Add required:true and validation to schema fields')
+            })
+        
+        return findings
+
+    def evaluate_express(self, extracted):
+        findings = []
+        rules = self.knowledge_base.get('express', {})
+        patterns = rules.get('patterns', {})
+        
+        parameter = extracted.get('parameter')
+        value = extracted.get('value')
+        
+        if parameter == 'cors_origin' and value == '*':
+            pattern = patterns.get('cors_wildcard', {})
+            findings.append({
+                "severity": pattern.get('severity', 'high'),
+                "library": "express",
+                "parameter": "cors_origin",
+                "value": "*",
+                "message": pattern.get('message', 'CORS wildcard — allows any origin'),
+                "fix": "Restrict CORS to specific trusted origins"
+            })
+        
+        elif parameter == 'helmet' and value == 'missing':
+            pattern = patterns.get('no_helmet', {})
+            findings.append({
+                "severity": pattern.get('severity', 'high'),
+                "library": "express",
+                "parameter": "helmet",
+                "value": "missing",
+                "message": pattern.get('message', 'Express missing helmet — security headers not set'),
+                "fix": "Add helmet middleware: app.use(helmet())"
+            })
+        
+        return findings
+
+    def evaluate_lodash(self, extracted):
+        findings = []
+        rules = self.knowledge_base.get('lodash', {})
+        patterns = rules.get('patterns', {})
+        
+        parameter = extracted.get('parameter')
+        value = extracted.get('value')
+        
+        if parameter == 'merge' and value == 'user_input':
+            pattern = patterns.get('merge_prototype', {})
+            findings.append({
+                "severity": pattern.get('severity', 'critical'),
+                "library": "lodash",
+                "parameter": "merge",
+                "value": "user_input",
+                "message": pattern.get('message', 'lodash.merge with user input — prototype pollution'),
+                "fix": "Use lodash.mergeWith with sanitized input or use spread operator"
+            })
+        
+        return findings

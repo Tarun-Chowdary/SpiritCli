@@ -3,15 +3,15 @@
     "patterns": {
         "no_helmet": {
             "severity": "high",
-            "message": "Express app missing helmet — security headers not set"
+            "message": "Express app missing helmet -- security headers not set"
         },
         "cors_wildcard": {
             "severity": "high", 
-            "message": "CORS wildcard (*) allows any origin — dangerous in banking"
+            "message": "CORS wildcard (*) allows any origin -- dangerous in banking"
         },
         "no_rate_limit": {
             "severity": "medium",
-            "message": "No rate limiting detected — vulnerable to brute force"
+            "message": "No rate limiting detected -- vulnerable to brute force"
         }
     }
 }

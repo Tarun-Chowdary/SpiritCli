@@ -3,6 +3,13 @@ from models import Score
 class Calculator:
     
     def compute(self, config=100, cve=100, trust=100, freshness=100, phantom=100):
+        # apply minimum floor of 30 to each component
+        config = max(30, config)
+        cve = max(30, cve)
+        trust = max(30, trust)
+        freshness = max(30, freshness)
+        phantom = max(30, phantom)
+        
         total = (
             config * 0.30 +
             cve * 0.25 +

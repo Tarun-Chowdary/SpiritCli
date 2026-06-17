@@ -1,5 +1,6 @@
 from datetime import datetime
 from models import Finding, Dependency, Score, Report
+from scoring import trust_score
 
 class Engine:
     def __init__(self, path):
@@ -221,7 +222,7 @@ class Engine:
                         pass
 
                     severity = "critical" if summary["critical"] > 0 else "high"
-                    for cve_id in summary["ids"][:2]:
+                    for cve_id in summary["ids"][:1]:
                         cve_findings.append(Finding(
                             severity=severity,
                             library=dep.name,
@@ -285,7 +286,7 @@ class Engine:
                 details_list.append(details)
 
                 if details and details["outdated"]:
-                    if details["score"] < 80:
+                    if details["score"] < 70:
                         freshness_findings.append(Finding(
                             severity="low" if details["score"] >= 60 else "medium",
                             library=dep.name,
@@ -315,12 +316,14 @@ class Engine:
 
         for analysis in analyses:
             try:
+                # only flag high and critical — skip medium to reduce noise
                 if analysis["risk_level"] in ["critical", "high"]:
                     severity = (
                         "critical" if analysis["risk_level"] == "critical"
                         else "high"
                     )
-                    for signal in analysis["signals"][:2]:
+                    # only top 1 signal per package
+                    for signal in analysis["signals"][:1]:
                         trust_findings.append(Finding(
                             severity=severity,
                             library=analysis["package"],
@@ -332,25 +335,11 @@ class Engine:
                                 f"trust score: {analysis['trust_score']}/100"
                             )
                         ))
-
-                elif analysis["risk_level"] == "medium":
-                    for signal in analysis["signals"][:1]:
-                        trust_findings.append(Finding(
-                            severity="medium",
-                            library=analysis["package"],
-                            file="package.json",
-                            line=0,
-                            message=f"[Trust] {signal}",
-                            fix=(
-                                f"Monitor {analysis['package']} — "
-                                f"trust score: {analysis['trust_score']}/100"
-                            )
-                        ))
             except Exception:
                 pass
 
         return trust_score, trust_findings
-
+    
     def _get_config_score(self):
         if not self.findings:
             return 100.0

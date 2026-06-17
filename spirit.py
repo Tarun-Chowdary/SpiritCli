@@ -405,7 +405,7 @@ def push(path, message, force):
 @cli.command()
 @click.argument('path', default='.')
 def fix(path):
-    """Auto-remediate bcrypt, JWT, axios, mongoose, express, lodash issues"""
+    """Auto-remediate config issues and offer package upgrades"""
     print_banner()
     with console.status("[cyan]Scanning for fixable issues...[/cyan]", spinner="dots"):
         engine = Engine(path)
@@ -418,11 +418,17 @@ def fix(path):
         and os.path.exists(f.file)
     ]
 
-    if not fixable:
+    cve_findings = [
+        f for f in report.findings
+        if f.file == 'package.json'
+        and ('GHSA' in f.message or 'CVE' in f.message)
+    ]
+
+    if not fixable and not cve_findings:
         console.print(Panel(
             Align.center(
-                "[bold green]✅ No auto-fixable issues found.[/bold green]\n\n"
-                "[dim]CVE and phantom findings require manual resolution.[/dim]"
+                "[bold green]✅ No fixable issues found.[/bold green]\n\n"
+                "[dim]All dependencies are clean.[/dim]"
             ),
             border_style="green"
         ))
@@ -430,10 +436,14 @@ def fix(path):
 
     console.print()
     console.print(Rule("[bold cyan]Auto-Remediation Engine[/bold cyan]", style="cyan"))
-    console.print(f"\n[bold]Found [red]{len(fixable)}[/red] fixable issues[/bold]\n")
+    console.print(
+        f"\n[bold]Found [red]{len(fixable)}[/red] config issues "
+        f"and [red]{len(cve_findings)}[/red] CVE findings[/bold]\n"
+    )
 
     fix_rules = get_fix_rules()
 
+    # ── PART 1: CONFIG FIXES ────────────────────────────────
     files_to_fix = {}
     for finding in fixable:
         if finding.file not in files_to_fix:
@@ -471,13 +481,16 @@ def fix(path):
                                 fix_applied = True
                                 break
                             else:
-                                failed_fixes.append(f"{lib} — validation failed")
+                                failed_fixes.append(
+                                    f"{lib} — validation failed"
+                                )
                     except re.error as e:
                         failed_fixes.append(f"{lib} — regex error: {e}")
                 if not fix_applied and lib in fix_rules:
-                    failed_fixes.append(f"{lib} — pattern not matched (manual fix needed)")
+                    failed_fixes.append(
+                        f"{lib} — pattern not matched (manual fix needed)"
+                    )
 
-            # show diff before confirm
             if applied_fixes:
                 from remediation.diff_viewer import DiffViewer
                 viewer = DiffViewer()
@@ -501,16 +514,23 @@ def fix(path):
                 ))
 
             if applied_fixes:
-                if click.confirm(f"Apply {len(applied_fixes)} fix(es) to {filepath}?"):
+                if click.confirm(
+                    f"Apply {len(applied_fixes)} fix(es) to {filepath}?"
+                ):
                     backup_path = filepath + ".spirit.bak"
                     with open(backup_path, 'w', encoding='utf-8') as f:
                         f.write(original)
                     with open(filepath, 'w', encoding='utf-8') as f:
                         f.write(modified)
-                    console.print(f"  [green]✅ Fixed {filepath}[/green] [dim](backup: {backup_path})[/dim]\n")
+                    console.print(
+                        f"  [green]✅ Fixed {filepath}[/green] "
+                        f"[dim](backup: {backup_path})[/dim]\n"
+                    )
                     total_fixed += len(applied_fixes)
                 else:
-                    console.print(f"  [yellow]⏭ Skipped {filepath}[/yellow]\n")
+                    console.print(
+                        f"  [yellow]⏭ Skipped {filepath}[/yellow]\n"
+                    )
                     total_skipped += len(applied_fixes)
 
             if failed_fixes:
@@ -520,10 +540,14 @@ def fix(path):
             console.print(f"[red]Permission denied: {filepath}[/red]")
             total_failed += 1
         except UnicodeDecodeError:
-            console.print(f"[red]Cannot read file (encoding issue): {filepath}[/red]")
+            console.print(
+                f"[red]Cannot read file (encoding issue): {filepath}[/red]"
+            )
             total_failed += 1
         except Exception as e:
-            console.print(f"[red]Unexpected error fixing {filepath}: {e}[/red]")
+            console.print(
+                f"[red]Unexpected error fixing {filepath}: {e}[/red]"
+            )
             total_failed += 1
 
     console.print()
@@ -531,10 +555,94 @@ def fix(path):
         f"[green]Fixed: {total_fixed}[/green]   "
         f"[yellow]Skipped: {total_skipped}[/yellow]   "
         f"[red]Failed: {total_failed}[/red]",
-        title="[cyan]Remediation Summary[/cyan]",
+        title="[cyan]Config Remediation Summary[/cyan]",
         border_style="cyan"
     ))
 
+    # ── PART 2: PACKAGE UPGRADES ────────────────────────────
+    if cve_findings:
+        console.print()
+        console.print(Rule("[bold cyan]Package Upgrade Engine[/bold cyan]", style="cyan"))
+
+        from remediation.upgrade_engine import UpgradeEngine
+
+        upgrade_engine = UpgradeEngine()
+
+        with console.status(
+            "[cyan]Fetching latest versions...[/cyan]", spinner="dots"
+        ):
+            plan = upgrade_engine.generate_upgrade_plan(
+                report.dependencies, cve_findings
+            )
+
+        if not plan:
+            console.print("[green]✅ No package upgrades needed.[/green]")
+        else:
+            table = Table(
+                box=box.ROUNDED, show_header=True,
+                header_style="bold cyan", border_style="cyan"
+            )
+            table.add_column("Package", width=18)
+            table.add_column("Current", width=12)
+            table.add_column("Recommended", width=14)
+            table.add_column("Latest", width=12)
+            table.add_column("Reason", width=35)
+
+            for item in plan:
+                table.add_row(
+                    f"[bold]{item['package']}[/bold]",
+                    f"[red]{item['current']}[/red]",
+                    f"[green]{item['recommended']}[/green]",
+                    f"[dim]{item['latest']}[/dim]",
+                    f"[dim]{item['reason'][:35]}[/dim]"
+                )
+
+            console.print(table)
+
+            pkg_json_path = os.path.join(path, 'package.json')
+            if os.path.exists(pkg_json_path):
+                console.print()
+                upgrade_all = click.confirm(
+                    f"Upgrade {len(plan)} package(s) in package.json?",
+                    default=False
+                )
+
+                if upgrade_all:
+                    upgraded = 0
+                    for item in plan:
+                        success = upgrade_engine.apply_upgrade(
+                            pkg_json_path,
+                            item['package'],
+                            item['recommended']
+                        )
+                        if success:
+                            console.print(
+                                f"  [green]✅ {item['package']}[/green] "
+                                f"[red]{item['current']}[/red] → "
+                                f"[green]{item['recommended']}[/green]"
+                            )
+                            upgraded += 1
+                        else:
+                            console.print(
+                                f"  [red]✗ {item['package']} — update failed[/red]"
+                            )
+
+                    console.print(Panel(
+                        Align.center(
+                            f"[green]✅ {upgraded}/{len(plan)} packages "
+                            f"upgraded in package.json[/green]\n\n"
+                            f"[dim]Run [cyan]npm install[/cyan] "
+                            f"to apply changes[/dim]\n"
+                            f"[dim]Backup: package.json.spirit.bak[/dim]"
+                        ),
+                        title="[cyan]Upgrade Complete[/cyan]",
+                        border_style="cyan",
+                        padding=(1, 4)
+                    ))
+                else:
+                    console.print("[yellow]Package upgrades skipped.[/yellow]")
+
+    # ── PART 3: RESCAN ──────────────────────────────────────
     if total_fixed > 0:
         console.print()
         console.print(Rule("[cyan]Rescanning...[/cyan]", style="cyan"))
@@ -554,8 +662,9 @@ def fix(path):
             padding=(1, 4)
         ))
     else:
-        console.print("[yellow]No fixes applied. Review failed fixes manually.[/yellow]")
-
+        console.print(
+            "[yellow]No config fixes applied.[/yellow]"
+        )
 @cli.command()
 @click.argument('path', default='.')
 def diff(path):
@@ -624,12 +733,16 @@ def watch(path):
     """Watch for file changes and scan every 5 saves"""
     print_banner()
     console.print(f"[cyan]Watching[/cyan] [bold]{path}[/bold] for changes...")
-    console.print("[dim]Scans every 5 saves — Press Ctrl+C to stop[/dim]\n")
+    console.print("[dim]Scans changed files every 5 saves — Press Ctrl+C to stop[/dim]\n")
+
+    from git.diff_scanner import DiffScanner
 
     class SpiritWatcher(FileSystemEventHandler):
         def __init__(self):
             self.save_count = 0
             self.scanning = False
+            self.scanner = DiffScanner()
+            self.last_event = {}  # track last event time per file
 
         def on_modified(self, event):
             if event.is_directory:
@@ -638,31 +751,73 @@ def watch(path):
                 return
             if self.scanning:
                 return
+
+            # debounce per file — ignore events within 1 second of last event
+            now = time.time()
+            last = self.last_event.get(event.src_path, 0)
+            if now - last < 1.0:
+                return  # same file fired twice, ignore
+            self.last_event[event.src_path] = now
+
             self.save_count += 1
             remaining = 5 - self.save_count
+
             console.print(
                 f"[dim]Save detected ({self.save_count}/5) — "
                 f"{remaining} more save(s) until next scan[/dim]"
             )
+
             if self.save_count >= 5:
                 self.scanning = True
                 self.save_count = 0
-                console.print(f"\n[cyan]5 saves reached — scanning...[/cyan]")
-                with console.status("[cyan]Rescanning...[/cyan]", spinner="dots"):
-                    engine = Engine(path)
-                    report = engine.run()
-                display_score(report.score)
-                if report.findings:
-                    console.print(f"[yellow]⚠ {len(report.findings)} findings[/yellow]")
-                else:
-                    console.print("[green]✅ No findings[/green]")
+                self.last_event = {}  # reset file tracking
+
+                console.print(f"\n[cyan]5 saves reached — scanning changed files...[/cyan]")
+
+                try:
+                    findings, changed_files = self.scanner.scan_diff(path)
+
+                    if not changed_files:
+                        console.print("[dim]No changed files detected[/dim]")
+                    else:
+                        console.print(
+                            f"[dim]Scanned {len(changed_files)} changed file(s)[/dim]"
+                        )
+                        if findings:
+                            console.print(
+                                f"[red]⚠ {len(findings)} issue(s) found:[/red]"
+                            )
+                            for f in findings:
+                                severity_color = {
+                                    "critical": "red",
+                                    "high": "orange3",
+                                    "medium": "yellow",
+                                    "low": "blue"
+                                }.get(f.severity, "white")
+                                console.print(
+                                    f"  [{severity_color}]●[/{severity_color}] "
+                                    f"[bold]{f.library}[/bold] — {f.message[:60]}"
+                                )
+                            console.print(
+                                f"[yellow]Run [cyan]spirit fix {path}[/cyan] "
+                                f"to auto-remediate[/yellow]"
+                            )
+                        else:
+                            console.print("[green]✅ No issues in changed files[/green]")
+
+                except Exception as e:
+                    console.print(f"[red]Scan error: {e}[/red]")
+
                 console.print(Rule(style="dim"))
-                console.print("[dim]Watching again — next scan after 5 saves[/dim]\n")
+                console.print(
+                    "[dim]Watching again — next scan after 5 saves[/dim]\n"
+                )
                 self.scanning = False
 
     observer = Observer()
     observer.schedule(SpiritWatcher(), path, recursive=True)
     observer.start()
+
     try:
         while True:
             time.sleep(1)

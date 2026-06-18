@@ -3,6 +3,7 @@ import os
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "scans.db")
 
+
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -34,6 +35,7 @@ def init_db():
     conn.commit()
     conn.close()
 
+
 def save_vulnerabilities(package_name, version, vuln_list):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -43,40 +45,54 @@ def save_vulnerabilities(package_name, version, vuln_list):
         VALUES (?, ?, ?, ?, ?)
     """
     for vuln in vuln_list:
-        cursor.execute(query, (
-            package_name,
-            version,
-            vuln.get("cve_id", "UNKNOWN"),
-            vuln.get("severity", "UNKNOWN"),
-            vuln.get("description", "No description provided.")
-        ))
+        cursor.execute(
+            query,
+            (
+                package_name,
+                version,
+                vuln.get("cve_id", "UNKNOWN"),
+                vuln.get("severity", "UNKNOWN"),
+                vuln.get("description", "No description provided."),
+            ),
+        )
     conn.commit()
     conn.close()
+
 
 def save_scan(path, score, zone, findings_count):
     from datetime import datetime
+
     conn = sqlite3.connect(DB_PATH)
-    conn.execute("""
+    conn.execute(
+        """
         INSERT INTO scans (path, score, zone, findings_count, timestamp)
         VALUES (?, ?, ?, ?, ?)
-    """, (path, score, zone, findings_count, datetime.now().isoformat()))
+    """,
+        (path, score, zone, findings_count, datetime.now().isoformat()),
+    )
     conn.commit()
     conn.close()
 
+
 def get_scan_history(path, limit=10):
     conn = sqlite3.connect(DB_PATH)
-    rows = conn.execute("""
+    rows = conn.execute(
+        """
         SELECT score, zone, findings_count, timestamp
         FROM scans WHERE path=?
         ORDER BY timestamp DESC LIMIT ?
-    """, (path, limit)).fetchall()
+    """,
+        (path, limit),
+    ).fetchall()
     conn.close()
     return rows
 
+
 def log_force_push(path, message):
     from datetime import datetime
+
     conn = sqlite3.connect(DB_PATH)
-    
+
     # create table if not exists
     conn.execute("""
         CREATE TABLE IF NOT EXISTS force_pushes (
@@ -86,13 +102,18 @@ def log_force_push(path, message):
             timestamp TEXT
         )
     """)
-    
-    conn.execute("""
+
+    conn.execute(
+        """
         INSERT INTO force_pushes (path, message, timestamp)
         VALUES (?, ?, ?)
-    """, (path, message, datetime.now().isoformat()))
-    
+    """,
+        (path, message, datetime.now().isoformat()),
+    )
+
     conn.commit()
     conn.close()
+
+
 # initialize on import
 init_db()

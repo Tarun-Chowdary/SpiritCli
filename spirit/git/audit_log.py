@@ -2,10 +2,8 @@ import sqlite3
 import os
 from datetime import datetime
 
-DB_PATH = os.path.join(
-    os.path.dirname(__file__), 
-    '..', 'storage', 'scans.db'
-)
+DB_PATH = os.path.join(os.path.dirname(__file__), "..", "storage", "scans.db")
+
 
 def _init_audit_table():
     conn = sqlite3.connect(DB_PATH)
@@ -24,6 +22,7 @@ def _init_audit_table():
     conn.commit()
     conn.close()
 
+
 def log_push_attempt(path, score, zone, action, message=""):
     """
     action can be:
@@ -34,71 +33,78 @@ def log_push_attempt(path, score, zone, action, message=""):
     CANCELLED    - developer chose not to push
     """
     _init_audit_table()
-    
+
     # get current user
     try:
         import getpass
+
         user = getpass.getuser()
     except Exception:
         user = "unknown"
-    
+
     conn = sqlite3.connect(DB_PATH)
-    conn.execute("""
+    conn.execute(
+        """
         INSERT INTO audit_log 
         (path, score, zone, action, message, user, timestamp)
         VALUES (?, ?, ?, ?, ?, ?, ?)
-    """, (
-        path,
-        score,
-        zone,
-        action,
-        message,
-        user,
-        datetime.now().isoformat()
-    ))
+    """,
+        (path, score, zone, action, message, user, datetime.now().isoformat()),
+    )
     conn.commit()
     conn.close()
+
 
 def get_audit_log(path=None, limit=20):
     _init_audit_table()
     conn = sqlite3.connect(DB_PATH)
-    
+
     if path:
-        rows = conn.execute("""
+        rows = conn.execute(
+            """
             SELECT path, score, zone, action, message, user, timestamp
             FROM audit_log
             WHERE path=?
             ORDER BY timestamp DESC
             LIMIT ?
-        """, (path, limit)).fetchall()
+        """,
+            (path, limit),
+        ).fetchall()
     else:
-        rows = conn.execute("""
+        rows = conn.execute(
+            """
             SELECT path, score, zone, action, message, user, timestamp
             FROM audit_log
             ORDER BY timestamp DESC
             LIMIT ?
-        """, (limit,)).fetchall()
-    
+        """,
+            (limit,),
+        ).fetchall()
+
     conn.close()
     return rows
+
 
 def get_audit_summary(path=None):
     _init_audit_table()
     conn = sqlite3.connect(DB_PATH)
-    
+
     if path:
-        rows = conn.execute("""
+        rows = conn.execute(
+            """
             SELECT action, COUNT(*) as count
             FROM audit_log
             WHERE path=?
             GROUP BY action
-        """, (path,)).fetchall()
+        """,
+            (path,),
+        ).fetchall()
     else:
         rows = conn.execute("""
             SELECT action, COUNT(*) as count
             FROM audit_log
             GROUP BY action
         """).fetchall()
-    
+
     conn.close()
     return {row[0]: row[1] for row in rows}

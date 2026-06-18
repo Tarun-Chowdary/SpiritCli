@@ -1,24 +1,25 @@
 import os
 from datetime import datetime
 
+
 class HTMLExporter:
-    
+
     def export(self, report_data, output_path=None):
         if not output_path:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             output_path = f"spirit_report_{timestamp}.html"
-        
+
         html = self._generate_html(report_data)
-        
-        with open(output_path, 'w') as f:
+
+        with open(output_path, "w") as f:
             f.write(html)
-        
+
         return output_path
-    
+
     def _generate_html(self, data):
         score = data["score"]["total"]
         zone = data["score"]["zone"]
-        
+
         if zone == "SAFE":
             zone_color = "#00ff88"
             zone_bg = "#003311"
@@ -28,7 +29,7 @@ class HTMLExporter:
         else:
             zone_color = "#ff4444"
             zone_bg = "#330000"
-        
+
         # findings rows
         findings_html = ""
         for f in data["findings"]:
@@ -37,9 +38,9 @@ class HTMLExporter:
                 "CRITICAL": "#ff4444",
                 "HIGH": "#ff8800",
                 "MEDIUM": "#ffaa00",
-                "LOW": "#4488ff"
+                "LOW": "#4488ff",
             }.get(sev, "#ffffff")
-            
+
             findings_html += f"""
             <tr>
                 <td style="color:{sev_color};font-weight:bold">{sev}</td>
@@ -50,11 +51,15 @@ class HTMLExporter:
                 <td style="color:#00ff88;font-size:12px">{f.get('fix','')}</td>
             </tr>
             """
-        
+
         # history rows
         history_html = ""
         for h in data["history"]:
-            h_color = "#00ff88" if h["zone"] == "SAFE" else "#ffaa00" if h["zone"] == "WARNING" else "#ff4444"
+            h_color = (
+                "#00ff88"
+                if h["zone"] == "SAFE"
+                else "#ffaa00" if h["zone"] == "WARNING" else "#ff4444"
+            )
             history_html += f"""
             <tr>
                 <td>{h['timestamp'][:19]}</td>
@@ -63,9 +68,13 @@ class HTMLExporter:
                 <td>{h['findings_count']}</td>
             </tr>
             """
-        
+
         trend = data.get("trend", "STABLE")
-        trend_color = "#00ff88" if trend == "IMPROVING" else "#ff4444" if trend == "DEGRADING" else "#ffaa00"
+        trend_color = (
+            "#00ff88"
+            if trend == "IMPROVING"
+            else "#ff4444" if trend == "DEGRADING" else "#ffaa00"
+        )
 
         return f"""<!DOCTYPE html>
 <html>

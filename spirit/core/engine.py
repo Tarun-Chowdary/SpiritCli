@@ -2,6 +2,7 @@ from datetime import datetime
 from models import Finding, Dependency, Score, Report
 from scoring import trust_score
 
+
 class Engine:
     def __init__(self, path):
         self.path = path
@@ -13,7 +14,7 @@ class Engine:
         from datetime import datetime
         from models import Report
         from rich.console import Console
-        
+
         console = Console()
 
         # Step 1 - collect files
@@ -69,17 +70,18 @@ class Engine:
             cve=cve_score,
             trust=trust_score,
             freshness=freshness_score,
-            phantom=phantom_score
+            phantom=phantom_score,
         )
 
         # Step 10 - save to database
         try:
             from storage.database import save_scan
+
             save_scan(
                 path=self.path,
                 score=score.total,
                 zone=score.zone,
-                findings_count=len(self.findings)
+                findings_count=len(self.findings),
             )
         except Exception as e:
             console.print(f"[yellow]Could not save scan: {e}[/yellow]")
@@ -90,7 +92,7 @@ class Engine:
             findings=self.findings,
             dependencies=self.dependencies,
             score=score,
-            timestamp=datetime.now().isoformat()
+            timestamp=datetime.now().isoformat(),
         )
 
         return report
@@ -107,11 +109,15 @@ class Engine:
 
     def _collect_files(self):
         import os
+
         collected = []
-        extensions = ('.js', '.ts', '.py', '.jsx', '.tsx')
+        extensions = (".js", ".ts", ".py", ".jsx", ".tsx")
         for root, dirs, files in os.walk(self.path):
-            dirs[:] = [d for d in dirs if d not in
-                      ['node_modules', 'venv', '.git', '__pycache__']]
+            dirs[:] = [
+                d
+                for d in dirs
+                if d not in ["node_modules", "venv", ".git", "__pycache__"]
+            ]
             for file in files:
                 if file.endswith(extensions):
                     collected.append(os.path.join(root, file))
@@ -120,40 +126,37 @@ class Engine:
     def _collect_dependencies(self):
         import os
         import json
+
         deps = []
 
-        pkg_path = os.path.join(self.path, 'package.json')
+        pkg_path = os.path.join(self.path, "package.json")
         if os.path.exists(pkg_path):
             try:
                 with open(pkg_path) as f:
                     pkg = json.load(f)
-                for name, version in pkg.get('dependencies', {}).items():
+                for name, version in pkg.get("dependencies", {}).items():
                     deps.append(Dependency(name=name, version=version))
-                for name, version in pkg.get('devDependencies', {}).items():
-                    deps.append(Dependency(
-                        name=name, version=version, is_dev=True
-                    ))
+                for name, version in pkg.get("devDependencies", {}).items():
+                    deps.append(Dependency(name=name, version=version, is_dev=True))
             except Exception:
                 pass
 
-        req_path = os.path.join(self.path, 'requirements.txt')
+        req_path = os.path.join(self.path, "requirements.txt")
         if os.path.exists(req_path):
             try:
                 with open(req_path) as f:
                     for line in f:
                         line = line.strip()
-                        if line and not line.startswith('#'):
-                            if '==' in line:
-                                name, version = line.split('==', 1)
-                                deps.append(Dependency(
-                                    name=name.strip(),
-                                    version=version.strip()
-                                ))
+                        if line and not line.startswith("#"):
+                            if "==" in line:
+                                name, version = line.split("==", 1)
+                                deps.append(
+                                    Dependency(
+                                        name=name.strip(), version=version.strip()
+                                    )
+                                )
                             else:
-                                deps.append(Dependency(
-                                    name=line,
-                                    version='unknown'
-                                ))
+                                deps.append(Dependency(name=line, version="unknown"))
             except Exception:
                 pass
 
@@ -170,7 +173,7 @@ class Engine:
 
             for filepath in files:
                 try:
-                    with open(filepath, 'r', encoding='utf-8') as f:
+                    with open(filepath, "r", encoding="utf-8") as f:
                         source = f.read()
                     configs = extractor.extract_all(source, filepath)
                     file_findings = analyzer.analyze_file(filepath, configs)
@@ -194,11 +197,7 @@ class Engine:
 
         for dep in self.dependencies:
             try:
-                result = client.query(
-                    dep.name,
-                    dep.version.lstrip('^~'),
-                    "npm"
-                )
+                result = client.query(dep.name, dep.version.lstrip("^~"), "npm")
                 summary = client.get_cve_summary(result)
                 dep_score = scorer.compute(summary)
                 scores.append(dep_score)
@@ -208,35 +207,33 @@ class Engine:
                         {
                             "cve_id": cve_id,
                             "severity": "HIGH",
-                            "description": f"{dep.name} vulnerability"
+                            "description": f"{dep.name} vulnerability",
                         }
                         for cve_id in summary["ids"]
                     ]
                     try:
                         save_vulnerabilities(
-                            dep.name,
-                            dep.version.lstrip('^~'),
-                            vuln_list
+                            dep.name, dep.version.lstrip("^~"), vuln_list
                         )
                     except Exception:
                         pass
 
                     severity = "critical" if summary["critical"] > 0 else "high"
                     for cve_id in summary["ids"][:1]:
-                        cve_findings.append(Finding(
-                            severity=severity,
-                            library=dep.name,
-                            file="package.json",
-                            line=0,
-                            message=f"{cve_id} — {dep.name}@{dep.version}",
-                            fix=f"Upgrade {dep.name} to latest version"
-                        ))
+                        cve_findings.append(
+                            Finding(
+                                severity=severity,
+                                library=dep.name,
+                                file="package.json",
+                                line=0,
+                                message=f"{cve_id} — {dep.name}@{dep.version}",
+                                fix=f"Upgrade {dep.name} to latest version",
+                            )
+                        )
             except Exception:
                 scores.append(100.0)
 
-        final_cve_score = round(
-            sum(scores) / len(scores), 1
-        ) if scores else 100.0
+        final_cve_score = round(sum(scores) / len(scores), 1) if scores else 100.0
         return final_cve_score, cve_findings
 
     def _check_phantom(self):
@@ -248,24 +245,28 @@ class Engine:
         phantom_findings = []
 
         for pkg in result["ghost"]:
-            phantom_findings.append(Finding(
-                severity="medium",
-                library=pkg,
-                file="package.json",
-                line=0,
-                message=f"Ghost dependency — {pkg} declared but never imported",
-                fix=f"Remove {pkg} from package.json"
-            ))
+            phantom_findings.append(
+                Finding(
+                    severity="medium",
+                    library=pkg,
+                    file="package.json",
+                    line=0,
+                    message=f"Ghost dependency — {pkg} declared but never imported",
+                    fix=f"Remove {pkg} from package.json",
+                )
+            )
 
         for pkg in result["undeclared"]:
-            phantom_findings.append(Finding(
-                severity="high",
-                library=pkg,
-                file="package.json",
-                line=0,
-                message=f"Undeclared import — {pkg} used in code but not declared",
-                fix=f"Add {pkg} to package.json dependencies"
-            ))
+            phantom_findings.append(
+                Finding(
+                    severity="high",
+                    library=pkg,
+                    file="package.json",
+                    line=0,
+                    message=f"Undeclared import — {pkg} used in code but not declared",
+                    fix=f"Add {pkg} to package.json dependencies",
+                )
+            )
 
         return phantom_score, phantom_findings
 
@@ -281,24 +282,26 @@ class Engine:
 
         for dep in self.dependencies:
             try:
-                clean_version = dep.version.lstrip('^~v').strip()
+                clean_version = dep.version.lstrip("^~v").strip()
                 details = registry.get_freshness_details(dep.name, clean_version)
                 details_list.append(details)
 
                 if details and details["outdated"]:
                     if details["score"] < 70:
-                        freshness_findings.append(Finding(
-                            severity="low" if details["score"] >= 60 else "medium",
-                            library=dep.name,
-                            file="package.json",
-                            line=0,
-                            message=(
-                                f"{dep.name} is outdated — "
-                                f"current: {details['current']} "
-                                f"latest: {details['latest']}"
-                            ),
-                            fix=f"Upgrade {dep.name} to {details['latest']}"
-                        ))
+                        freshness_findings.append(
+                            Finding(
+                                severity="low" if details["score"] >= 60 else "medium",
+                                library=dep.name,
+                                file="package.json",
+                                line=0,
+                                message=(
+                                    f"{dep.name} is outdated — "
+                                    f"current: {details['current']} "
+                                    f"latest: {details['latest']}"
+                                ),
+                                fix=f"Upgrade {dep.name} to {details['latest']}",
+                            )
+                        )
             except Exception:
                 details_list.append(None)
 
@@ -319,40 +322,46 @@ class Engine:
                 # only flag high and critical — skip medium to reduce noise
                 if analysis["risk_level"] in ["critical", "high"]:
                     severity = (
-                        "critical" if analysis["risk_level"] == "critical"
-                        else "high"
+                        "critical" if analysis["risk_level"] == "critical" else "high"
                     )
                     # only top 1 signal per package
                     for signal in analysis["signals"][:1]:
-                        trust_findings.append(Finding(
-                            severity=severity,
-                            library=analysis["package"],
-                            file="package.json",
-                            line=0,
-                            message=f"[Trust] {signal}",
-                            fix=(
-                                f"Review {analysis['package']} — "
-                                f"trust score: {analysis['trust_score']}/100"
+                        trust_findings.append(
+                            Finding(
+                                severity=severity,
+                                library=analysis["package"],
+                                file="package.json",
+                                line=0,
+                                message=f"[Trust] {signal}",
+                                fix=(
+                                    f"Review {analysis['package']} — "
+                                    f"trust score: {analysis['trust_score']}/100"
+                                ),
                             )
-                        ))
+                        )
             except Exception:
                 pass
 
         return trust_score, trust_findings
-    
+
     def _get_config_score(self):
         if not self.findings:
             return 100.0
 
         config_libraries = [
-            'bcrypt', 'jwt', 'jsonwebtoken',
-            'axios', 'mongoose', 'express', 'lodash'
+            "bcrypt",
+            "jwt",
+            "jsonwebtoken",
+            "axios",
+            "mongoose",
+            "express",
+            "lodash",
         ]
 
         config_findings = [
-            f for f in self.findings
-            if f.library in config_libraries
-            and f.file != 'package.json'
+            f
+            for f in self.findings
+            if f.library in config_libraries and f.file != "package.json"
         ]
 
         if not config_findings:
@@ -371,42 +380,49 @@ class Engine:
 
         penalty = min(penalty, 70)
         return round(max(0, 100 - penalty), 1)
+
     def _check_licenses(self):
         from integrations.license_api import LicenseChecker
         from models import Finding
-        
+
         checker = LicenseChecker()
         results = checker.check_all(self.dependencies)
         license_score = checker.compute_score(results)
         license_findings = []
-        
+
         for r in results:
             if r["status"] == "dangerous":
-                license_findings.append(Finding(
-                    severity="critical",
-                    library=r["package"],
-                    file="package.json",
-                    line=0,
-                    message=f"License {r['license']} incompatible with commercial use",
-                    fix=f"Replace {r['package']} with MIT/Apache licensed alternative"
-                ))
+                license_findings.append(
+                    Finding(
+                        severity="critical",
+                        library=r["package"],
+                        file="package.json",
+                        line=0,
+                        message=f"License {r['license']} incompatible with commercial use",
+                        fix=f"Replace {r['package']} with MIT/Apache licensed alternative",
+                    )
+                )
             elif r["status"] == "review":
-                license_findings.append(Finding(
-                    severity="medium",
-                    library=r["package"],
-                    file="package.json",
-                    line=0,
-                    message=f"License {r['license']} requires legal review",
-                    fix=f"Review {r['package']} license with legal team"
-                ))
+                license_findings.append(
+                    Finding(
+                        severity="medium",
+                        library=r["package"],
+                        file="package.json",
+                        line=0,
+                        message=f"License {r['license']} requires legal review",
+                        fix=f"Review {r['package']} license with legal team",
+                    )
+                )
             elif r["status"] == "unknown":
-                license_findings.append(Finding(
-                    severity="low",
-                    library=r["package"],
-                    file="package.json",
-                    line=0,
-                    message=f"License unknown for {r['package']} — review required",
-                    fix=f"Verify license for {r['package']}"
-                ))
-        
+                license_findings.append(
+                    Finding(
+                        severity="low",
+                        library=r["package"],
+                        file="package.json",
+                        line=0,
+                        message=f"License unknown for {r['package']} — review required",
+                        fix=f"Verify license for {r['package']}",
+                    )
+                )
+
         return license_score, license_findings

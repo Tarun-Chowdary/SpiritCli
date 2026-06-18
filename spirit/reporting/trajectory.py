@@ -1,24 +1,25 @@
 from storage.database import get_scan_history
 
+
 class Trajectory:
-    
+
     def get(self, path):
         history = get_scan_history(path, limit=10)
-        
+
         if not history:
             return None
-        
+
         scores = [row[0] for row in history]
         scores.reverse()  # oldest first
-        
+
         return {
             "scores": scores,
             "min": min(scores),
             "max": max(scores),
             "latest": scores[-1],
-            "trend": self._classify(scores)
+            "trend": self._classify(scores),
         }
-    
+
     def _classify(self, scores):
         if len(scores) < 2:
             return "STABLE"
@@ -29,15 +30,15 @@ class Trajectory:
             return "DEGRADING"
         else:
             return "STABLE"
-    
+
     def ascii_graph(self, path):
         history = get_scan_history(path, limit=8)
         if not history:
             return ""
-        
+
         scores = [row[0] for row in history]
         scores.reverse()
-        
+
         lines = []
         lines.append("Score Trajectory")
         lines.append("")
@@ -49,5 +50,5 @@ class Trajectory:
         lines.append("     " + "  ".join([f"S{i+1}" for i in range(len(scores))]))
         lines.append("")
         lines.append("  " + "  ".join([str(s) for s in scores]))
-        
+
         return "\n".join(lines)

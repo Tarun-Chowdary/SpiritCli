@@ -1,10 +1,11 @@
 import requests
 
+
 def fetch_vulnerabilities(package_name, version, ecosystem="npm"):
     url = "https://api.osv.dev/v1/query"
     payload = {
         "package": {"name": package_name, "ecosystem": ecosystem},
-        "version": version
+        "version": version,
     }
     try:
         response = requests.post(url, json=payload, timeout=10)
@@ -21,11 +22,9 @@ def fetch_vulnerabilities(package_name, version, ecosystem="npm"):
             description = vuln.get("summary", "No description provided.")
             db_specific = vuln.get("database_specific", {})
             severity = db_specific.get("severity", "UNKNOWN")
-            cleaned_vulnerabilities.append({
-                "cve_id": cve_id,
-                "severity": severity,
-                "description": description
-            })
+            cleaned_vulnerabilities.append(
+                {"cve_id": cve_id, "severity": severity, "description": description}
+            )
     return cleaned_vulnerabilities
 
 
@@ -46,7 +45,7 @@ class OSVClient:
                 "high": 0,
                 "medium": 0,
                 "low": 0,
-                "ids": []
+                "ids": [],
             }
 
         summary = {
@@ -55,7 +54,7 @@ class OSVClient:
             "high": 0,
             "medium": 0,
             "low": 0,
-            "ids": []
+            "ids": [],
         }
 
         for vuln in vulns:

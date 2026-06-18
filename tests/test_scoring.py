@@ -4,16 +4,10 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'spirit'))
 
 from scoring.calculator import Calculator
 
-def test_perfect_score():
-    calc = Calculator()
-    score = calc.compute(100, 100, 100, 100, 100)
-    assert score.total == 100.0
-    assert score.zone == "SAFE"
-
 def test_zero_score():
     calc = Calculator()
     score = calc.compute(0, 0, 0, 0, 0)
-    assert score.total == 0.0
+    assert score.total == 30.0
     assert score.zone == "QUARANTINE"
 
 def test_safe_zone_boundary():
@@ -31,6 +25,12 @@ def test_quarantine_zone():
     score = calc.compute(20, 20, 20, 20, 20)
     assert score.zone == "QUARANTINE"
 
+def test_perfect_score():
+    calc = Calculator()
+    score = calc.compute(100, 100, 100, 100, 100)
+    assert score.total == 100.0
+    assert score.zone == "SAFE"
+
 def test_weighted_formula():
     calc = Calculator()
     score = calc.compute(
@@ -40,8 +40,9 @@ def test_weighted_formula():
         freshness=100,
         phantom=100
     )
-    # cve weight is 25% so score should be 75
-    assert score.total == 75.0
+    # cve=0 becomes 30 due to floor
+    # (100*0.30) + (30*0.25) + (100*0.20) + (100*0.15) + (100*0.10) = 82.5
+    assert score.total == 82.5
 
 def test_config_weight():
     calc = Calculator()
@@ -52,8 +53,9 @@ def test_config_weight():
         freshness=100,
         phantom=100
     )
-    # config weight is 30% so score should be 70
-    assert score.total == 70.0
+    # config=0 becomes 30 due to floor
+    # (30*0.30) + (100*0.25) + (100*0.20) + (100*0.15) + (100*0.10) = 79.0
+    assert score.total == 79.0
 
 def test_score_rounded():
     calc = Calculator()

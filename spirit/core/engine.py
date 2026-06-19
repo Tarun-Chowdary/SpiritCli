@@ -426,3 +426,83 @@ class Engine:
                 )
 
         return license_score, license_findings
+    
+    def run_with_cache(self, force=False):
+        """
+        Run scan with caching. Returns cached result if files unchanged.
+        Set force=True to bypass cache.
+        """
+        from storage.cache import get_cached_scan, save_scan_cache
+        from rich.console import Console
+        console = Console()
+
+        if not force:
+            cached = get_cached_scan(self.path)
+            if cached:
+                console.print("[dim]Using cached scan results — files unchanged[/dim]")
+                return self._deserialize_report(cached)
+
+        # run full scan
+        report = self.run()
+
+        # save to cache
+        save_scan_cache(self.path, self._serialize_report(report))
+
+        return report
+
+    def _serialize_report(self, report):
+        """Convert report to JSON-serializable dict"""
+        return {
+            "scan_path": report.scan_path,
+            "timestamp": report.timestamp,
+            "findings": [f.to_dict() for f in report.findings],
+            "dependencies": [d.to_dict() for d in report.dependencies],
+            "score": report.score.to_dict()
+        }
+
+    def _deserialize_report(self, data):
+        """Rebuild Report object from cached dict"""
+        from models import Finding, Dependency, Score, Report
+
+        findings = [
+            Finding(
+                severity=f["severity"],
+                library=f["library"],
+                file=f["file"],
+                line=f["line"],
+                message=f["message"],
+                parameter=f.get("parameter"),
+                value=f.get("value"),
+                fix=f.get("fix")
+            )
+            for f in data.get("findings", [])
+        ]
+
+        dependencies = [
+            Dependency(
+                name=d["name"],
+                version=d["version"],
+                is_direct=d.get("is_direct", True),
+                is_dev=d.get("is_dev", False)
+            )
+            for d in data.get("dependencies", [])
+        ]
+
+        s = data.get("score", {})
+        score = Score(
+            config_score=s.get("config_score", 100),
+            cve_score=s.get("cve_score", 100),
+            trust_score=s.get("trust_score", 100),
+            freshness_score=s.get("freshness_score", 100),
+            phantom_score=s.get("phantom_score", 100),
+            total=s.get("total", 100),
+            zone=s.get("zone", "SAFE")
+        )
+
+        return Report(
+            scan_path=data["scan_path"],
+            findings=findings,
+            dependencies=dependencies,
+            score=score,
+            timestamp=data["timestamp"]
+        )

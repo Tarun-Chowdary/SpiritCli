@@ -1024,7 +1024,46 @@ def licenses(path):
             f"\n[red]⚠ {len(dangerous)} incompatible license(s) detected — "
             f"legal review required[/red]"
         )
+@cli.command()
+@click.option('--confirm', is_flag=True, help='Skip confirmation prompt')
+def reset(confirm):
+    """Reset all scan history, audit logs and cache"""
+    print_banner()
 
+    if not confirm:
+        confirmed = click.confirm(
+            "This will delete all scan history, audit logs, and cache. Are you sure?",
+            default=False,
+        )
+        if not confirmed:
+            console.print("[yellow]Reset cancelled.[/yellow]")
+            return
 
+    import sqlite3
+    from storage.cache import clear_all_cache
+
+    # clear cache file
+    clear_all_cache()
+    console.print("[green]✓ Cache cleared[/green]")
+
+    # clear database — IF EXISTS prevents crash on missing tables
+    db_path = os.path.join("spirit", "storage", "scans.db")
+    if os.path.exists(db_path):
+        conn = sqlite3.connect(db_path)
+        conn.execute("DELETE FROM scans WHERE 1=1")
+        conn.execute("DROP TABLE IF EXISTS vulnerabilities")
+        conn.execute("DROP TABLE IF EXISTS audit_log")
+        conn.execute("DROP TABLE IF EXISTS force_pushes")
+        conn.execute("DELETE FROM sqlite_sequence WHERE 1=1")
+        conn.commit()
+        conn.close()
+        console.print("[green]✓ Database cleared[/green]")
+    else:
+        console.print("[dim]No database found — nothing to clear[/dim]")
+
+    console.print(Panel(
+        Align.center("[bold green]✅ Reset complete — fresh start[/bold green]"),
+        border_style="green",
+    ))
 if __name__ == "__main__":
     cli()

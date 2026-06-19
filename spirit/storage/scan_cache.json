@@ -1,10 +1,192 @@
 {
+  "cve::xml-parser::1.2.1": {
+    "timestamp": 1781868646.954792,
+    "data": {
+      "score": 100.0,
+      "findings_data": []
+    }
+  },
+  "cve::bcrypt::5.0.0": {
+    "timestamp": 1781868646.9680011,
+    "data": {
+      "score": 100.0,
+      "findings_data": []
+    }
+  },
+  "cve::express::4.17.1": {
+    "timestamp": 1781868647.0018718,
+    "data": {
+      "score": 93,
+      "findings_data": [
+        {
+          "severity": "high",
+          "library": "express",
+          "version": "^4.17.1",
+          "cve_id": "GHSA-qw6h-vgh9-j6wx"
+        }
+      ]
+    }
+  },
+  "cve::mongoose::5.12.0": {
+    "timestamp": 1781868647.035153,
+    "data": {
+      "score": 30,
+      "findings_data": [
+        {
+          "severity": "critical",
+          "library": "mongoose",
+          "version": "^5.12.0",
+          "cve_id": "GHSA-9m93-w8w6-76hh"
+        }
+      ]
+    }
+  },
+  "cve::lodash::4.17.15": {
+    "timestamp": 1781868647.0832117,
+    "data": {
+      "score": 55,
+      "findings_data": [
+        {
+          "severity": "high",
+          "library": "lodash",
+          "version": "^4.17.15",
+          "cve_id": "GHSA-29mw-wpgm-hmr9"
+        }
+      ]
+    }
+  },
+  "cve::jsonwebtoken::8.5.1": {
+    "timestamp": 1781868647.09467,
+    "data": {
+      "score": 80,
+      "findings_data": [
+        {
+          "severity": "high",
+          "library": "jsonwebtoken",
+          "version": "^8.5.1",
+          "cve_id": "GHSA-8cf7-32gw-wr33"
+        }
+      ]
+    }
+  },
+  "cve::axios::0.21.1": {
+    "timestamp": 1781868647.836571,
+    "data": {
+      "score": 53,
+      "findings_data": [
+        {
+          "severity": "high",
+          "library": "axios",
+          "version": "^0.21.1",
+          "cve_id": "GHSA-3g43-6gmg-66jw"
+        }
+      ]
+    }
+  },
+  "freshness::lodash::4.17.15": {
+    "timestamp": 1781868649.511006,
+    "data": {
+      "details": {
+        "package": "lodash",
+        "current": "4.17.15",
+        "latest": "4.18.1",
+        "score": 90.0,
+        "outdated": true
+      },
+      "finding_data": null
+    }
+  },
+  "freshness::bcrypt::5.0.0": {
+    "timestamp": 1781868649.5150442,
+    "data": {
+      "details": {
+        "package": "bcrypt",
+        "current": "5.0.0",
+        "latest": "6.0.0",
+        "score": 60.0,
+        "outdated": true
+      },
+      "finding_data": {
+        "severity": "low",
+        "library": "bcrypt",
+        "current": "5.0.0",
+        "latest": "6.0.0"
+      }
+    }
+  },
+  "freshness::jsonwebtoken::8.5.1": {
+    "timestamp": 1781868649.5479155,
+    "data": {
+      "details": {
+        "package": "jsonwebtoken",
+        "current": "8.5.1",
+        "latest": "9.0.3",
+        "score": 60.0,
+        "outdated": true
+      },
+      "finding_data": {
+        "severity": "low",
+        "library": "jsonwebtoken",
+        "current": "8.5.1",
+        "latest": "9.0.3"
+      }
+    }
+  },
+  "freshness::express::4.17.1": {
+    "timestamp": 1781868649.606816,
+    "data": {
+      "details": {
+        "package": "express",
+        "current": "4.17.1",
+        "latest": "5.2.1",
+        "score": 60.0,
+        "outdated": true
+      },
+      "finding_data": {
+        "severity": "low",
+        "library": "express",
+        "current": "4.17.1",
+        "latest": "5.2.1"
+      }
+    }
+  },
+  "freshness::xml-parser::1.2.1": {
+    "timestamp": 1781868649.6506517,
+    "data": {
+      "details": {
+        "package": "xml-parser",
+        "current": "1.2.1",
+        "latest": "1.2.1",
+        "score": 100.0,
+        "outdated": false
+      },
+      "finding_data": null
+    }
+  },
+  "freshness::mongoose::5.12.0": {
+    "timestamp": 1781868649.9164038,
+    "data": {
+      "details": {
+        "package": "mongoose",
+        "current": "5.12.0",
+        "latest": "9.7.1",
+        "score": 20.0,
+        "outdated": true
+      },
+      "finding_data": {
+        "severity": "medium",
+        "library": "mongoose",
+        "current": "5.12.0",
+        "latest": "9.7.1"
+      }
+    }
+  },
   "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\demo_apps\\vulnerable_bank_app": {
     "hash": "792b3c50e56eec095e45c837efc5e730",
-    "timestamp": "2026-06-19T16:25:32.056998",
+    "timestamp": "2026-06-19T17:02:46.787200",
     "report_data": {
       "scan_path": "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\demo_apps\\vulnerable_bank_app",
-      "timestamp": "2026-06-19T16:25:32.054564",
+      "timestamp": "2026-06-19T17:02:46.785108",
       "findings": [
         {
           "severity": "critical",
@@ -68,16 +250,6 @@
         },
         {
           "severity": "high",
-          "library": "jsonwebtoken",
-          "file": "package.json",
-          "line": 0,
-          "message": "GHSA-8cf7-32gw-wr33 \u2014 jsonwebtoken@^8.5.1",
-          "parameter": null,
-          "value": null,
-          "fix": "Upgrade jsonwebtoken to latest version"
-        },
-        {
-          "severity": "high",
           "library": "axios",
           "file": "package.json",
           "line": 0,
@@ -88,13 +260,13 @@
         },
         {
           "severity": "high",
-          "library": "lodash",
+          "library": "jsonwebtoken",
           "file": "package.json",
           "line": 0,
-          "message": "GHSA-29mw-wpgm-hmr9 \u2014 lodash@^4.17.15",
+          "message": "GHSA-8cf7-32gw-wr33 \u2014 jsonwebtoken@^8.5.1",
           "parameter": null,
           "value": null,
-          "fix": "Upgrade lodash to latest version"
+          "fix": "Upgrade jsonwebtoken to latest version"
         },
         {
           "severity": "high",
@@ -105,6 +277,16 @@
           "parameter": null,
           "value": null,
           "fix": "Upgrade express to latest version"
+        },
+        {
+          "severity": "high",
+          "library": "lodash",
+          "file": "package.json",
+          "line": 0,
+          "message": "GHSA-29mw-wpgm-hmr9 \u2014 lodash@^4.17.15",
+          "parameter": null,
+          "value": null,
+          "fix": "Upgrade lodash to latest version"
         },
         {
           "severity": "critical",
@@ -128,16 +310,6 @@
         },
         {
           "severity": "low",
-          "library": "bcrypt",
-          "file": "package.json",
-          "line": 0,
-          "message": "bcrypt is outdated \u2014 current: 5.0.0 latest: 6.0.0",
-          "parameter": null,
-          "value": null,
-          "fix": "Upgrade bcrypt to 6.0.0"
-        },
-        {
-          "severity": "low",
           "library": "jsonwebtoken",
           "file": "package.json",
           "line": 0,
@@ -145,6 +317,16 @@
           "parameter": null,
           "value": null,
           "fix": "Upgrade jsonwebtoken to 9.0.3"
+        },
+        {
+          "severity": "low",
+          "library": "bcrypt",
+          "file": "package.json",
+          "line": 0,
+          "message": "bcrypt is outdated \u2014 current: 5.0.0 latest: 6.0.0",
+          "parameter": null,
+          "value": null,
+          "fix": "Upgrade bcrypt to 6.0.0"
         },
         {
           "severity": "low",
@@ -157,16 +339,6 @@
           "fix": "Upgrade axios to 1.18.0"
         },
         {
-          "severity": "low",
-          "library": "express",
-          "file": "package.json",
-          "line": 0,
-          "message": "express is outdated \u2014 current: 4.17.1 latest: 5.2.1",
-          "parameter": null,
-          "value": null,
-          "fix": "Upgrade express to 5.2.1"
-        },
-        {
           "severity": "medium",
           "library": "mongoose",
           "file": "package.json",
@@ -175,6 +347,16 @@
           "parameter": null,
           "value": null,
           "fix": "Upgrade mongoose to 9.7.1"
+        },
+        {
+          "severity": "low",
+          "library": "express",
+          "file": "package.json",
+          "line": 0,
+          "message": "express is outdated \u2014 current: 4.17.1 latest: 5.2.1",
+          "parameter": null,
+          "value": null,
+          "fix": "Upgrade express to 5.2.1"
         },
         {
           "severity": "high",
@@ -260,6 +442,24 @@
         "phantom_score": 95,
         "total": 61.1,
         "zone": "WARNING"
+      }
+    }
+  },
+  "freshness::axios::0.21.1": {
+    "timestamp": 1781868687.5458112,
+    "data": {
+      "details": {
+        "package": "axios",
+        "current": "0.21.1",
+        "latest": "1.18.0",
+        "score": 60.0,
+        "outdated": true
+      },
+      "finding_data": {
+        "severity": "low",
+        "library": "axios",
+        "current": "0.21.1",
+        "latest": "1.18.0"
       }
     }
   }

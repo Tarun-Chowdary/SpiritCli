@@ -1,21 +1,27 @@
+"""SpiritCLI Core Engine — Central orchestration module"""
+
+import os
+import json
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+from rich.console import Console
+
 from models import Finding, Dependency, Score, Report
-from scoring import trust_score
+
+console = Console()
 
 
 class Engine:
+    """Main SpiritCLI scanning engine."""
+
     def __init__(self, path):
         self.path = path
         self.findings = []
         self.dependencies = []
 
     def run(self):
-        from scoring.calculator import Calculator
-        from datetime import datetime
-        from models import Report
-        from rich.console import Console
-
-        console = Console()
+        """Run full security scan — all modules."""
 
         # Step 1 - collect files
         files = self._collect_files()
@@ -24,11 +30,10 @@ class Engine:
         # Step 2 - collect dependencies
         self.dependencies = self._collect_dependencies()
 
-        # Step 3 - run config analysis
+        # Step 3 - config analysis
         self.findings = self._run_analysis(files)
 
-        # Step 4 - CVE check
-        console.print("[cyan]Checking CVEs...[/cyan]")
+        # Step 4 - CVE check (parallel)
         try:
             cve_score, cve_findings = self._check_cves()
             self.findings.extend(cve_findings)
@@ -44,7 +49,7 @@ class Engine:
             console.print(f"[yellow]Phantom check failed: {e}[/yellow]")
             phantom_score = 100.0
 
-        # Step 6 - freshness check
+        # Step 6 - freshness check (parallel)
         try:
             freshness_score, freshness_findings = self._check_freshness()
             self.findings.extend(freshness_findings)
@@ -60,10 +65,11 @@ class Engine:
             console.print(f"[yellow]Provenance check failed: {e}[/yellow]")
             trust_score = 100.0
 
-        # Step 8 - deduplicate findings
+        # Step 8 - deduplicate
         self.findings = self._deduplicate_findings(self.findings)
 
         # Step 9 - compute score
+        from scoring.calculator import Calculator
         calc = Calculator()
         score = calc.compute(
             config=self._get_config_score(),
@@ -76,7 +82,6 @@ class Engine:
         # Step 10 - save to database
         try:
             from storage.database import save_scan
-
             save_scan(
                 path=self.path,
                 score=score.total,
@@ -97,25 +102,91 @@ class Engine:
 
         return report
 
-    def _deduplicate_findings(self, findings):
-        seen = set()
-        unique = []
-        for f in findings:
-            key = (f.library, f.file, f.severity, f.message[:50])
-            if key not in seen:
-                seen.add(key)
-                unique.append(f)
-        return unique
+    # ── CACHE SYSTEM ────────────────────────────────────────
+
+    def run_with_cache(self, force=False):
+        """
+        Run scan with caching.
+        Returns cached result if files unchanged.
+        Set force=True to bypass cache.
+        """
+        from storage.cache import get_cached_scan, save_scan_cache
+
+        if not force:
+            cached = get_cached_scan(self.path)
+            if cached:
+                console.print(
+                    "[dim]⚡ Using cached scan — files unchanged[/dim]"
+                )
+                return self._deserialize_report(cached)
+
+        report = self.run()
+        save_scan_cache(self.path, self._serialize_report(report))
+        return report
+
+    def _serialize_report(self, report):
+        """Convert report to JSON-serializable dict."""
+        return {
+            "scan_path": report.scan_path,
+            "timestamp": report.timestamp,
+            "findings": [f.to_dict() for f in report.findings],
+            "dependencies": [d.to_dict() for d in report.dependencies],
+            "score": report.score.to_dict(),
+        }
+
+    def _deserialize_report(self, data):
+        """Rebuild Report object from cached dict."""
+        findings = [
+            Finding(
+                severity=f["severity"],
+                library=f["library"],
+                file=f["file"],
+                line=f["line"],
+                message=f["message"],
+                parameter=f.get("parameter"),
+                value=f.get("value"),
+                fix=f.get("fix"),
+            )
+            for f in data.get("findings", [])
+        ]
+
+        dependencies = [
+            Dependency(
+                name=d["name"],
+                version=d["version"],
+                is_direct=d.get("is_direct", True),
+                is_dev=d.get("is_dev", False),
+            )
+            for d in data.get("dependencies", [])
+        ]
+
+        s = data.get("score", {})
+        score = Score(
+            config_score=s.get("config_score", 100),
+            cve_score=s.get("cve_score", 100),
+            trust_score=s.get("trust_score", 100),
+            freshness_score=s.get("freshness_score", 100),
+            phantom_score=s.get("phantom_score", 100),
+            total=s.get("total", 100),
+            zone=s.get("zone", "SAFE"),
+        )
+
+        return Report(
+            scan_path=data["scan_path"],
+            findings=findings,
+            dependencies=dependencies,
+            score=score,
+            timestamp=data["timestamp"],
+        )
+
+    # ── FILE COLLECTION ─────────────────────────────────────
 
     def _collect_files(self):
-        import os
-
         collected = []
         extensions = (".js", ".ts", ".py", ".jsx", ".tsx")
         for root, dirs, files in os.walk(self.path):
             dirs[:] = [
-                d
-                for d in dirs
+                d for d in dirs
                 if d not in ["node_modules", "venv", ".git", "__pycache__"]
             ]
             for file in files:
@@ -124,27 +195,26 @@ class Engine:
         return collected
 
     def _collect_dependencies(self):
-        import os
-        import json
-
         deps = []
 
         pkg_path = os.path.join(self.path, "package.json")
         if os.path.exists(pkg_path):
             try:
-                with open(pkg_path) as f:
+                with open(pkg_path, "r", encoding="utf-8") as f:
                     pkg = json.load(f)
                 for name, version in pkg.get("dependencies", {}).items():
                     deps.append(Dependency(name=name, version=version))
                 for name, version in pkg.get("devDependencies", {}).items():
-                    deps.append(Dependency(name=name, version=version, is_dev=True))
+                    deps.append(
+                        Dependency(name=name, version=version, is_dev=True)
+                    )
             except Exception:
                 pass
 
         req_path = os.path.join(self.path, "requirements.txt")
         if os.path.exists(req_path):
             try:
-                with open(req_path) as f:
+                with open(req_path, "r", encoding="utf-8") as f:
                     for line in f:
                         line = line.strip()
                         if line and not line.startswith("#"):
@@ -152,15 +222,20 @@ class Engine:
                                 name, version = line.split("==", 1)
                                 deps.append(
                                     Dependency(
-                                        name=name.strip(), version=version.strip()
+                                        name=name.strip(),
+                                        version=version.strip()
                                     )
                                 )
                             else:
-                                deps.append(Dependency(name=line, version="unknown"))
+                                deps.append(
+                                    Dependency(name=line, version="unknown")
+                                )
             except Exception:
                 pass
 
         return deps
+
+    # ── CONFIG ANALYSIS ─────────────────────────────────────
 
     def _run_analysis(self, files):
         findings = []
@@ -185,22 +260,34 @@ class Engine:
 
         return findings
 
+    # ── CVE CHECK — PARALLEL ────────────────────────────────
+
     def _check_cves(self):
         from integrations.osv import OSVClient
         from scoring.cve_score import CVEScorer
         from storage.database import save_vulnerabilities
+        from storage.cache import get_cached_cve, save_cached_cve
 
         client = OSVClient()
         scorer = CVEScorer()
         scores = []
         cve_findings = []
 
-        for dep in self.dependencies:
+        def check_single_dep(dep):
+            """Check one dependency — runs in parallel thread."""
             try:
-                result = client.query(dep.name, dep.version.lstrip("^~"), "npm")
+                clean_version = dep.version.lstrip("^~")
+
+                # check CVE cache first — skip API call if cached
+                cached = get_cached_cve(dep.name, clean_version)
+                if cached:
+                    return cached["score"], cached["findings_data"]
+
+                # not cached — query OSV API
+                result = client.query(dep.name, clean_version, "npm")
                 summary = client.get_cve_summary(result)
                 dep_score = scorer.compute(summary)
-                scores.append(dep_score)
+                findings_data = []
 
                 if summary["count"] > 0:
                     vuln_list = [
@@ -212,29 +299,56 @@ class Engine:
                         for cve_id in summary["ids"]
                     ]
                     try:
-                        save_vulnerabilities(
-                            dep.name, dep.version.lstrip("^~"), vuln_list
-                        )
+                        save_vulnerabilities(dep.name, clean_version, vuln_list)
                     except Exception:
                         pass
 
                     severity = "critical" if summary["critical"] > 0 else "high"
                     for cve_id in summary["ids"][:1]:
-                        cve_findings.append(
-                            Finding(
-                                severity=severity,
-                                library=dep.name,
-                                file="package.json",
-                                line=0,
-                                message=f"{cve_id} — {dep.name}@{dep.version}",
-                                fix=f"Upgrade {dep.name} to latest version",
-                            )
-                        )
+                        findings_data.append({
+                            "severity": severity,
+                            "library": dep.name,
+                            "version": dep.version,
+                            "cve_id": cve_id,
+                        })
+
+                # save to CVE cache
+                save_cached_cve(dep.name, clean_version, {
+                    "score": dep_score,
+                    "findings_data": findings_data,
+                })
+
+                return dep_score, findings_data
+
             except Exception:
-                scores.append(100.0)
+                return 100.0, []
+
+        # run all deps in parallel — 10 threads max
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            futures = {
+                executor.submit(check_single_dep, dep): dep
+                for dep in self.dependencies
+            }
+            for future in as_completed(futures):
+                try:
+                    dep_score, findings_data = future.result()
+                    scores.append(dep_score)
+                    for fd in findings_data:
+                        cve_findings.append(Finding(
+                            severity=fd["severity"],
+                            library=fd["library"],
+                            file="package.json",
+                            line=0,
+                            message=f"{fd['cve_id']} — {fd['library']}@{fd['version']}",
+                            fix=f"Upgrade {fd['library']} to latest version",
+                        ))
+                except Exception:
+                    scores.append(100.0)
 
         final_cve_score = round(sum(scores) / len(scores), 1) if scores else 100.0
         return final_cve_score, cve_findings
+
+    # ── PHANTOM CHECK ────────────────────────────────────────
 
     def _check_phantom(self):
         from phantom import PhantomDetector
@@ -245,68 +359,102 @@ class Engine:
         phantom_findings = []
 
         for pkg in result["ghost"]:
-            phantom_findings.append(
-                Finding(
-                    severity="medium",
-                    library=pkg,
-                    file="package.json",
-                    line=0,
-                    message=f"Ghost dependency — {pkg} declared but never imported",
-                    fix=f"Remove {pkg} from package.json",
-                )
-            )
+            phantom_findings.append(Finding(
+                severity="medium",
+                library=pkg,
+                file="package.json",
+                line=0,
+                message=f"Ghost dependency — {pkg} declared but never imported",
+                fix=f"Remove {pkg} from package.json",
+            ))
 
         for pkg in result["undeclared"]:
-            phantom_findings.append(
-                Finding(
-                    severity="high",
-                    library=pkg,
-                    file="package.json",
-                    line=0,
-                    message=f"Undeclared import — {pkg} used in code but not declared",
-                    fix=f"Add {pkg} to package.json dependencies",
-                )
-            )
+            phantom_findings.append(Finding(
+                severity="high",
+                library=pkg,
+                file="package.json",
+                line=0,
+                message=f"Undeclared import — {pkg} used in code but not declared",
+                fix=f"Add {pkg} to package.json dependencies",
+            ))
 
         return phantom_score, phantom_findings
+
+    # ── FRESHNESS CHECK — PARALLEL ───────────────────────────
 
     def _check_freshness(self):
         from integrations.npm_registry import NPMRegistry
         from scoring.freshness_score import FreshnessScorer
+        from storage.cache import get_cached_freshness, save_cached_freshness
 
         registry = NPMRegistry()
         scorer = FreshnessScorer()
-
         details_list = []
         freshness_findings = []
 
-        for dep in self.dependencies:
+        def check_single_dep(dep):
+            """Check freshness for one dep — runs in parallel thread."""
             try:
                 clean_version = dep.version.lstrip("^~v").strip()
-                details = registry.get_freshness_details(dep.name, clean_version)
-                details_list.append(details)
 
-                if details and details["outdated"]:
-                    if details["score"] < 70:
-                        freshness_findings.append(
-                            Finding(
-                                severity="low" if details["score"] >= 60 else "medium",
-                                library=dep.name,
-                                file="package.json",
-                                line=0,
-                                message=(
-                                    f"{dep.name} is outdated — "
-                                    f"current: {details['current']} "
-                                    f"latest: {details['latest']}"
-                                ),
-                                fix=f"Upgrade {dep.name} to {details['latest']}",
-                            )
-                        )
+                # check freshness cache first
+                cached = get_cached_freshness(dep.name, clean_version)
+                if cached:
+                    return cached.get("details"), cached.get("finding_data")
+
+                # not cached — query npm registry
+                details = registry.get_freshness_details(dep.name, clean_version)
+                finding_data = None
+
+                if details and details["outdated"] and details["score"] < 70:
+                    finding_data = {
+                        "severity": "low" if details["score"] >= 60 else "medium",
+                        "library": dep.name,
+                        "current": details["current"],
+                        "latest": details["latest"],
+                    }
+
+                # save to freshness cache
+                save_cached_freshness(dep.name, clean_version, {
+                    "details": details,
+                    "finding_data": finding_data,
+                })
+
+                return details, finding_data
+
             except Exception:
-                details_list.append(None)
+                return None, None
+
+        # run all deps in parallel — 10 threads max
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            futures = {
+                executor.submit(check_single_dep, dep): dep
+                for dep in self.dependencies
+            }
+            for future in as_completed(futures):
+                try:
+                    details, finding_data = future.result()
+                    details_list.append(details)
+                    if finding_data:
+                        freshness_findings.append(Finding(
+                            severity=finding_data["severity"],
+                            library=finding_data["library"],
+                            file="package.json",
+                            line=0,
+                            message=(
+                                f"{finding_data['library']} is outdated — "
+                                f"current: {finding_data['current']} "
+                                f"latest: {finding_data['latest']}"
+                            ),
+                            fix=f"Upgrade {finding_data['library']} to {finding_data['latest']}",
+                        ))
+                except Exception:
+                    details_list.append(None)
 
         freshness_score = scorer.compute(details_list)
         return freshness_score, freshness_findings
+
+    # ── PROVENANCE CHECK ─────────────────────────────────────
 
     def _check_provenance(self):
         from provenance import TrustEngine
@@ -314,53 +462,46 @@ class Engine:
         engine = TrustEngine()
         analyses = engine.analyze_all(self.dependencies)
         trust_score = engine.compute_aggregate_score(analyses)
-
         trust_findings = []
 
         for analysis in analyses:
             try:
-                # only flag high and critical — skip medium to reduce noise
                 if analysis["risk_level"] in ["critical", "high"]:
                     severity = (
-                        "critical" if analysis["risk_level"] == "critical" else "high"
+                        "critical"
+                        if analysis["risk_level"] == "critical"
+                        else "high"
                     )
-                    # only top 1 signal per package
                     for signal in analysis["signals"][:1]:
-                        trust_findings.append(
-                            Finding(
-                                severity=severity,
-                                library=analysis["package"],
-                                file="package.json",
-                                line=0,
-                                message=f"[Trust] {signal}",
-                                fix=(
-                                    f"Review {analysis['package']} — "
-                                    f"trust score: {analysis['trust_score']}/100"
-                                ),
-                            )
-                        )
+                        trust_findings.append(Finding(
+                            severity=severity,
+                            library=analysis["package"],
+                            file="package.json",
+                            line=0,
+                            message=f"[Trust] {signal}",
+                            fix=(
+                                f"Review {analysis['package']} — "
+                                f"trust score: {analysis['trust_score']}/100"
+                            ),
+                        ))
             except Exception:
                 pass
 
         return trust_score, trust_findings
+
+    # ── SCORING ──────────────────────────────────────────────
 
     def _get_config_score(self):
         if not self.findings:
             return 100.0
 
         config_libraries = [
-            "bcrypt",
-            "jwt",
-            "jsonwebtoken",
-            "axios",
-            "mongoose",
-            "express",
-            "lodash",
+            "bcrypt", "jwt", "jsonwebtoken",
+            "axios", "mongoose", "express", "lodash",
         ]
 
         config_findings = [
-            f
-            for f in self.findings
+            f for f in self.findings
             if f.library in config_libraries and f.file != "package.json"
         ]
 
@@ -381,9 +522,20 @@ class Engine:
         penalty = min(penalty, 70)
         return round(max(0, 100 - penalty), 1)
 
+    def _deduplicate_findings(self, findings):
+        seen = set()
+        unique = []
+        for f in findings:
+            key = (f.library, f.file, f.severity, f.message[:50])
+            if key not in seen:
+                seen.add(key)
+                unique.append(f)
+        return unique
+
+    # ── LICENSE CHECK ────────────────────────────────────────
+
     def _check_licenses(self):
         from integrations.license_api import LicenseChecker
-        from models import Finding
 
         checker = LicenseChecker()
         results = checker.check_all(self.dependencies)
@@ -392,117 +544,31 @@ class Engine:
 
         for r in results:
             if r["status"] == "dangerous":
-                license_findings.append(
-                    Finding(
-                        severity="critical",
-                        library=r["package"],
-                        file="package.json",
-                        line=0,
-                        message=f"License {r['license']} incompatible with commercial use",
-                        fix=f"Replace {r['package']} with MIT/Apache licensed alternative",
-                    )
-                )
+                license_findings.append(Finding(
+                    severity="critical",
+                    library=r["package"],
+                    file="package.json",
+                    line=0,
+                    message=f"License {r['license']} incompatible with commercial use",
+                    fix=f"Replace {r['package']} with MIT/Apache licensed alternative",
+                ))
             elif r["status"] == "review":
-                license_findings.append(
-                    Finding(
-                        severity="medium",
-                        library=r["package"],
-                        file="package.json",
-                        line=0,
-                        message=f"License {r['license']} requires legal review",
-                        fix=f"Review {r['package']} license with legal team",
-                    )
-                )
+                license_findings.append(Finding(
+                    severity="medium",
+                    library=r["package"],
+                    file="package.json",
+                    line=0,
+                    message=f"License {r['license']} requires legal review",
+                    fix=f"Review {r['package']} license with legal team",
+                ))
             elif r["status"] == "unknown":
-                license_findings.append(
-                    Finding(
-                        severity="low",
-                        library=r["package"],
-                        file="package.json",
-                        line=0,
-                        message=f"License unknown for {r['package']} — review required",
-                        fix=f"Verify license for {r['package']}",
-                    )
-                )
+                license_findings.append(Finding(
+                    severity="low",
+                    library=r["package"],
+                    file="package.json",
+                    line=0,
+                    message=f"License unknown for {r['package']} — review required",
+                    fix=f"Verify license for {r['package']}",
+                ))
 
         return license_score, license_findings
-    
-    def run_with_cache(self, force=False):
-        """
-        Run scan with caching. Returns cached result if files unchanged.
-        Set force=True to bypass cache.
-        """
-        from storage.cache import get_cached_scan, save_scan_cache
-        from rich.console import Console
-        console = Console()
-
-        if not force:
-            cached = get_cached_scan(self.path)
-            if cached:
-                console.print("[dim]Using cached scan results — files unchanged[/dim]")
-                return self._deserialize_report(cached)
-
-        # run full scan
-        report = self.run()
-
-        # save to cache
-        save_scan_cache(self.path, self._serialize_report(report))
-
-        return report
-
-    def _serialize_report(self, report):
-        """Convert report to JSON-serializable dict"""
-        return {
-            "scan_path": report.scan_path,
-            "timestamp": report.timestamp,
-            "findings": [f.to_dict() for f in report.findings],
-            "dependencies": [d.to_dict() for d in report.dependencies],
-            "score": report.score.to_dict()
-        }
-
-    def _deserialize_report(self, data):
-        """Rebuild Report object from cached dict"""
-        from models import Finding, Dependency, Score, Report
-
-        findings = [
-            Finding(
-                severity=f["severity"],
-                library=f["library"],
-                file=f["file"],
-                line=f["line"],
-                message=f["message"],
-                parameter=f.get("parameter"),
-                value=f.get("value"),
-                fix=f.get("fix")
-            )
-            for f in data.get("findings", [])
-        ]
-
-        dependencies = [
-            Dependency(
-                name=d["name"],
-                version=d["version"],
-                is_direct=d.get("is_direct", True),
-                is_dev=d.get("is_dev", False)
-            )
-            for d in data.get("dependencies", [])
-        ]
-
-        s = data.get("score", {})
-        score = Score(
-            config_score=s.get("config_score", 100),
-            cve_score=s.get("cve_score", 100),
-            trust_score=s.get("trust_score", 100),
-            freshness_score=s.get("freshness_score", 100),
-            phantom_score=s.get("phantom_score", 100),
-            total=s.get("total", 100),
-            zone=s.get("zone", "SAFE")
-        )
-
-        return Report(
-            scan_path=data["scan_path"],
-            findings=findings,
-            dependencies=dependencies,
-            score=score,
-            timestamp=data["timestamp"]
-        )

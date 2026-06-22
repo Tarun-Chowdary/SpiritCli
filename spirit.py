@@ -121,7 +121,7 @@ def run_scan_cached(path, force=False):
         cached = get_cached_scan(abs_path)
         if cached:
             report = Engine(abs_path)._deserialize_report(cached)
-            console.print("[dim]⚡ Using cached scan — files unchanged[/dim]")
+            console.print("[dim] Using cached scan — files unchanged[/dim]")
             return report
 
     engine = Engine(abs_path)

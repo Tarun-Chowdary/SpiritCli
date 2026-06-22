@@ -183,10 +183,10 @@
   },
   "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\demo_apps\\vulnerable_bank_app": {
     "hash": "792b3c50e56eec095e45c837efc5e730",
-    "timestamp": "2026-06-22T14:15:02.040133",
+    "timestamp": "2026-06-22T16:51:59.600542",
     "report_data": {
       "scan_path": "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\demo_apps\\vulnerable_bank_app",
-      "timestamp": "2026-06-22T14:15:02.038029",
+      "timestamp": "2026-06-22T16:51:59.597570",
       "findings": [
         {
           "severity": "critical",
@@ -250,6 +250,16 @@
         },
         {
           "severity": "high",
+          "library": "express",
+          "file": "package.json",
+          "line": 0,
+          "message": "GHSA-qw6h-vgh9-j6wx \u2014 express@^4.17.1",
+          "parameter": null,
+          "value": null,
+          "fix": "Upgrade express to latest version"
+        },
+        {
+          "severity": "high",
           "library": "jsonwebtoken",
           "file": "package.json",
           "line": 0,
@@ -260,23 +270,13 @@
         },
         {
           "severity": "high",
-          "library": "express",
+          "library": "axios",
           "file": "package.json",
           "line": 0,
-          "message": "GHSA-qw6h-vgh9-j6wx \u2014 express@^4.17.1",
+          "message": "GHSA-3g43-6gmg-66jw \u2014 axios@^0.21.1",
           "parameter": null,
           "value": null,
-          "fix": "Upgrade express to latest version"
-        },
-        {
-          "severity": "critical",
-          "library": "mongoose",
-          "file": "package.json",
-          "line": 0,
-          "message": "GHSA-9m93-w8w6-76hh \u2014 mongoose@^5.12.0",
-          "parameter": null,
-          "value": null,
-          "fix": "Upgrade mongoose to latest version"
+          "fix": "Upgrade axios to latest version"
         },
         {
           "severity": "high",
@@ -289,14 +289,14 @@
           "fix": "Upgrade lodash to latest version"
         },
         {
-          "severity": "high",
-          "library": "axios",
+          "severity": "critical",
+          "library": "mongoose",
           "file": "package.json",
           "line": 0,
-          "message": "GHSA-3g43-6gmg-66jw \u2014 axios@^0.21.1",
+          "message": "GHSA-9m93-w8w6-76hh \u2014 mongoose@^5.12.0",
           "parameter": null,
           "value": null,
-          "fix": "Upgrade axios to latest version"
+          "fix": "Upgrade mongoose to latest version"
         },
         {
           "severity": "medium",
@@ -320,13 +320,13 @@
         },
         {
           "severity": "low",
-          "library": "express",
+          "library": "bcrypt",
           "file": "package.json",
           "line": 0,
-          "message": "express is outdated \u2014 current: 4.17.1 latest: 5.2.1",
+          "message": "bcrypt is outdated \u2014 current: 5.0.0 latest: 6.0.0",
           "parameter": null,
           "value": null,
-          "fix": "Upgrade express to 5.2.1"
+          "fix": "Upgrade bcrypt to 6.0.0"
         },
         {
           "severity": "low",
@@ -340,13 +340,13 @@
         },
         {
           "severity": "low",
-          "library": "bcrypt",
+          "library": "express",
           "file": "package.json",
           "line": 0,
-          "message": "bcrypt is outdated \u2014 current: 5.0.0 latest: 6.0.0",
+          "message": "express is outdated \u2014 current: 4.17.1 latest: 5.2.1",
           "parameter": null,
           "value": null,
-          "fix": "Upgrade bcrypt to 6.0.0"
+          "fix": "Upgrade express to 5.2.1"
         },
         {
           "severity": "medium",

@@ -462,5 +462,350 @@
         "latest": "1.18.0"
       }
     }
+  },
+  "cve::jsonwebtoken::9.0.2": {
+    "timestamp": 1782126236.800138,
+    "data": {
+      "score": 100.0,
+      "findings_data": []
+    }
+  },
+  "cve::express::4.18.2": {
+    "timestamp": 1782126236.8114297,
+    "data": {
+      "score": 93,
+      "findings_data": [
+        {
+          "severity": "high",
+          "library": "express",
+          "version": "^4.18.2",
+          "cve_id": "GHSA-qw6h-vgh9-j6wx"
+        }
+      ]
+    }
+  },
+  "cve::mongoose::8.0.0": {
+    "timestamp": 1782126236.8567085,
+    "data": {
+      "score": 55,
+      "findings_data": [
+        {
+          "severity": "critical",
+          "library": "mongoose",
+          "version": "^8.0.0",
+          "cve_id": "GHSA-m7xq-9374-9rvx"
+        }
+      ]
+    }
+  },
+  "cve::lodash::4.17.21": {
+    "timestamp": 1782126236.8669543,
+    "data": {
+      "score": 80,
+      "findings_data": [
+        {
+          "severity": "high",
+          "library": "lodash",
+          "version": "^4.17.21",
+          "cve_id": "GHSA-f23m-r3pf-42rh"
+        }
+      ]
+    }
+  },
+  "cve::bcrypt::5.1.1": {
+    "timestamp": 1782126237.2489774,
+    "data": {
+      "score": 100.0,
+      "findings_data": []
+    }
+  },
+  "cve::axios::1.6.0": {
+    "timestamp": 1782126237.5789845,
+    "data": {
+      "score": 53,
+      "findings_data": [
+        {
+          "severity": "high",
+          "library": "axios",
+          "version": "^1.6.0",
+          "cve_id": "GHSA-35jp-ww65-95wh"
+        }
+      ]
+    }
+  },
+  "freshness::jsonwebtoken::9.0.2": {
+    "timestamp": 1782126240.0705748,
+    "data": {
+      "details": {
+        "package": "jsonwebtoken",
+        "current": "9.0.2",
+        "latest": "9.0.3",
+        "score": 95.0,
+        "outdated": true
+      },
+      "finding_data": null
+    }
+  },
+  "freshness::bcrypt::5.1.1": {
+    "timestamp": 1782126240.22653,
+    "data": {
+      "details": {
+        "package": "bcrypt",
+        "current": "5.1.1",
+        "latest": "6.0.0",
+        "score": 60.0,
+        "outdated": true
+      },
+      "finding_data": {
+        "severity": "low",
+        "library": "bcrypt",
+        "current": "5.1.1",
+        "latest": "6.0.0"
+      }
+    }
+  },
+  "freshness::lodash::4.17.21": {
+    "timestamp": 1782126240.2542362,
+    "data": {
+      "details": {
+        "package": "lodash",
+        "current": "4.17.21",
+        "latest": "4.18.1",
+        "score": 90.0,
+        "outdated": true
+      },
+      "finding_data": null
+    }
+  },
+  "freshness::axios::1.6.0": {
+    "timestamp": 1782126240.3385444,
+    "data": {
+      "details": {
+        "package": "axios",
+        "current": "1.6.0",
+        "latest": "1.18.0",
+        "score": 70.0,
+        "outdated": true
+      },
+      "finding_data": null
+    }
+  },
+  "freshness::express::4.18.2": {
+    "timestamp": 1782126240.479041,
+    "data": {
+      "details": {
+        "package": "express",
+        "current": "4.18.2",
+        "latest": "5.2.1",
+        "score": 60.0,
+        "outdated": true
+      },
+      "finding_data": {
+        "severity": "low",
+        "library": "express",
+        "current": "4.18.2",
+        "latest": "5.2.1"
+      }
+    }
+  },
+  "freshness::helmet::7.1.0": {
+    "timestamp": 1782126240.703967,
+    "data": {
+      "details": {
+        "package": "helmet",
+        "current": "7.1.0",
+        "latest": "8.2.0",
+        "score": 60.0,
+        "outdated": true
+      },
+      "finding_data": {
+        "severity": "low",
+        "library": "helmet",
+        "current": "7.1.0",
+        "latest": "8.2.0"
+      }
+    }
+  },
+  "freshness::mongoose::8.0.0": {
+    "timestamp": 1782126241.2170084,
+    "data": {
+      "details": {
+        "package": "mongoose",
+        "current": "8.0.0",
+        "latest": "9.7.1",
+        "score": 60.0,
+        "outdated": true
+      },
+      "finding_data": {
+        "severity": "low",
+        "library": "mongoose",
+        "current": "8.0.0",
+        "latest": "9.7.1"
+      }
+    }
+  },
+  "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\demo_apps\\secure_bank_app": {
+    "hash": "e2c4fccbbf27dcc18e7d60af42429c76",
+    "timestamp": "2026-06-22T16:34:09.571379",
+    "report_data": {
+      "scan_path": "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\demo_apps\\secure_bank_app",
+      "timestamp": "2026-06-22T16:34:09.568116",
+      "findings": [
+        {
+          "severity": "high",
+          "library": "express",
+          "file": "package.json",
+          "line": 0,
+          "message": "GHSA-qw6h-vgh9-j6wx \u2014 express@^4.18.2",
+          "parameter": null,
+          "value": null,
+          "fix": "Upgrade express to latest version"
+        },
+        {
+          "severity": "critical",
+          "library": "mongoose",
+          "file": "package.json",
+          "line": 0,
+          "message": "GHSA-m7xq-9374-9rvx \u2014 mongoose@^8.0.0",
+          "parameter": null,
+          "value": null,
+          "fix": "Upgrade mongoose to latest version"
+        },
+        {
+          "severity": "high",
+          "library": "lodash",
+          "file": "package.json",
+          "line": 0,
+          "message": "GHSA-f23m-r3pf-42rh \u2014 lodash@^4.17.21",
+          "parameter": null,
+          "value": null,
+          "fix": "Upgrade lodash to latest version"
+        },
+        {
+          "severity": "high",
+          "library": "axios",
+          "file": "package.json",
+          "line": 0,
+          "message": "GHSA-35jp-ww65-95wh \u2014 axios@^1.6.0",
+          "parameter": null,
+          "value": null,
+          "fix": "Upgrade axios to latest version"
+        },
+        {
+          "severity": "low",
+          "library": "bcrypt",
+          "file": "package.json",
+          "line": 0,
+          "message": "bcrypt is outdated \u2014 current: 5.1.1 latest: 6.0.0",
+          "parameter": null,
+          "value": null,
+          "fix": "Upgrade bcrypt to 6.0.0"
+        },
+        {
+          "severity": "low",
+          "library": "express",
+          "file": "package.json",
+          "line": 0,
+          "message": "express is outdated \u2014 current: 4.18.2 latest: 5.2.1",
+          "parameter": null,
+          "value": null,
+          "fix": "Upgrade express to 5.2.1"
+        },
+        {
+          "severity": "low",
+          "library": "helmet",
+          "file": "package.json",
+          "line": 0,
+          "message": "helmet is outdated \u2014 current: 7.1.0 latest: 8.2.0",
+          "parameter": null,
+          "value": null,
+          "fix": "Upgrade helmet to 8.2.0"
+        },
+        {
+          "severity": "low",
+          "library": "mongoose",
+          "file": "package.json",
+          "line": 0,
+          "message": "mongoose is outdated \u2014 current: 8.0.0 latest: 9.7.1",
+          "parameter": null,
+          "value": null,
+          "fix": "Upgrade mongoose to 9.7.1"
+        }
+      ],
+      "dependencies": [
+        {
+          "name": "bcrypt",
+          "version": "^5.1.1",
+          "is_direct": true,
+          "is_dev": false,
+          "transitive_path": [],
+          "cves": [],
+          "trust_score": null
+        },
+        {
+          "name": "jsonwebtoken",
+          "version": "^9.0.2",
+          "is_direct": true,
+          "is_dev": false,
+          "transitive_path": [],
+          "cves": [],
+          "trust_score": null
+        },
+        {
+          "name": "axios",
+          "version": "^1.6.0",
+          "is_direct": true,
+          "is_dev": false,
+          "transitive_path": [],
+          "cves": [],
+          "trust_score": null
+        },
+        {
+          "name": "lodash",
+          "version": "^4.17.21",
+          "is_direct": true,
+          "is_dev": false,
+          "transitive_path": [],
+          "cves": [],
+          "trust_score": null
+        },
+        {
+          "name": "express",
+          "version": "^4.18.2",
+          "is_direct": true,
+          "is_dev": false,
+          "transitive_path": [],
+          "cves": [],
+          "trust_score": null
+        },
+        {
+          "name": "mongoose",
+          "version": "^8.0.0",
+          "is_direct": true,
+          "is_dev": false,
+          "transitive_path": [],
+          "cves": [],
+          "trust_score": null
+        },
+        {
+          "name": "helmet",
+          "version": "^7.1.0",
+          "is_direct": true,
+          "is_dev": false,
+          "transitive_path": [],
+          "cves": [],
+          "trust_score": null
+        }
+      ],
+      "score": {
+        "config_score": 100.0,
+        "cve_score": 83.0,
+        "trust_score": 84.6,
+        "freshness_score": 70.7,
+        "phantom_score": 100,
+        "total": 88.3,
+        "zone": "SAFE"
+      }
+    }
   }
 }

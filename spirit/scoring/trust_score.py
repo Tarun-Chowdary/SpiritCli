@@ -1,33 +1,50 @@
 class TrustScorer:
-
     def compute(self, dependencies):
         """
-        Basic trust scoring based on package metadata.
-        Full provenance analysis is future scope.
-        Returns 0-100
+        Advanced trust scoring based on provenance, maintainer reputation, 
+        and repository health. Returns 0-100.
         """
         if not dependencies:
             return 100.0
 
-        total = 0
-        count = 0
+        total_score = 0
 
         for dep in dependencies:
-            score = 100
+            # this version shifts the paradigm: Start at a neutral 50, require proof to reach 100
+            score = 50.0  
 
-            # penalize unknown versions
+            # 1. Versioning Sanity (Retained from MVP)
             if dep.version in ["unknown", "", "*"]:
                 score -= 20
+            elif dep.version.startswith("*"):
+                score -= 10
 
-            # penalize wildcard versions
-            if dep.version.startswith("*"):
-                score -= 15
+            # 2. Maintainer Identity & Provenance (New)
+            if getattr(dep, 'is_verified_publisher', False):
+                score += 25  # E.g., npm verified publisher
+            if getattr(dep, 'has_2fa_enabled', False):
+                score += 15  # Protection against account takeovers
 
-            # use existing trust score if set
-            if dep.trust_score is not None:
+            # 3. Community Adoption & Health (New)
+            stars = getattr(dep, 'github_stars', 0)
+            if stars > 5000:
+                score += 10
+            elif stars > 500:
+                score += 5
+
+            # 4. Critical Supply Chain Red Flags (New)
+            if getattr(dep, 'is_deprecated', False):
+                score -= 40  # Massive penalty: package is officially abandoned
+            if getattr(dep, 'has_recent_ownership_transfer', False):
+                score -= 25  # High risk of malicious takeover (e.g., standard supply chain attack)
+
+            # Enforce 0-100 boundaries
+            score = max(0.0, min(100.0, score))
+
+            # Allow external hard-override (if another security tool already vetted it)
+            if getattr(dep, 'trust_score', None) is not None:
                 score = dep.trust_score
 
-            total += score
-            count += 1
+            total_score += score
 
-        return round(total / count, 1) if count > 0 else 100.0
+        return round(total_score / len(dependencies), 1)

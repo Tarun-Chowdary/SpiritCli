@@ -183,10 +183,10 @@
   },
   "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\demo_apps\\vulnerable_bank_app": {
     "hash": "792b3c50e56eec095e45c837efc5e730",
-    "timestamp": "2026-06-22T16:51:59.600542",
+    "timestamp": "2026-06-22T17:39:18.227223",
     "report_data": {
       "scan_path": "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\demo_apps\\vulnerable_bank_app",
-      "timestamp": "2026-06-22T16:51:59.597570",
+      "timestamp": "2026-06-22T17:39:18.224921",
       "findings": [
         {
           "severity": "critical",
@@ -250,16 +250,6 @@
         },
         {
           "severity": "high",
-          "library": "express",
-          "file": "package.json",
-          "line": 0,
-          "message": "GHSA-qw6h-vgh9-j6wx \u2014 express@^4.17.1",
-          "parameter": null,
-          "value": null,
-          "fix": "Upgrade express to latest version"
-        },
-        {
-          "severity": "high",
           "library": "jsonwebtoken",
           "file": "package.json",
           "line": 0,
@@ -277,6 +267,16 @@
           "parameter": null,
           "value": null,
           "fix": "Upgrade axios to latest version"
+        },
+        {
+          "severity": "high",
+          "library": "express",
+          "file": "package.json",
+          "line": 0,
+          "message": "GHSA-qw6h-vgh9-j6wx \u2014 express@^4.17.1",
+          "parameter": null,
+          "value": null,
+          "fix": "Upgrade express to latest version"
         },
         {
           "severity": "high",
@@ -310,16 +310,6 @@
         },
         {
           "severity": "low",
-          "library": "jsonwebtoken",
-          "file": "package.json",
-          "line": 0,
-          "message": "jsonwebtoken is outdated \u2014 current: 8.5.1 latest: 9.0.3",
-          "parameter": null,
-          "value": null,
-          "fix": "Upgrade jsonwebtoken to 9.0.3"
-        },
-        {
-          "severity": "low",
           "library": "bcrypt",
           "file": "package.json",
           "line": 0,
@@ -327,6 +317,16 @@
           "parameter": null,
           "value": null,
           "fix": "Upgrade bcrypt to 6.0.0"
+        },
+        {
+          "severity": "low",
+          "library": "jsonwebtoken",
+          "file": "package.json",
+          "line": 0,
+          "message": "jsonwebtoken is outdated \u2014 current: 8.5.1 latest: 9.0.3",
+          "parameter": null,
+          "value": null,
+          "fix": "Upgrade jsonwebtoken to 9.0.3"
         },
         {
           "severity": "low",
@@ -339,16 +339,6 @@
           "fix": "Upgrade axios to 1.18.0"
         },
         {
-          "severity": "low",
-          "library": "express",
-          "file": "package.json",
-          "line": 0,
-          "message": "express is outdated \u2014 current: 4.17.1 latest: 5.2.1",
-          "parameter": null,
-          "value": null,
-          "fix": "Upgrade express to 5.2.1"
-        },
-        {
           "severity": "medium",
           "library": "mongoose",
           "file": "package.json",
@@ -357,6 +347,16 @@
           "parameter": null,
           "value": null,
           "fix": "Upgrade mongoose to 9.7.1"
+        },
+        {
+          "severity": "low",
+          "library": "express",
+          "file": "package.json",
+          "line": 0,
+          "message": "express is outdated \u2014 current: 4.17.1 latest: 5.2.1",
+          "parameter": null,
+          "value": null,
+          "fix": "Upgrade express to 5.2.1"
         },
         {
           "severity": "high",

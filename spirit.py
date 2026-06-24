@@ -192,13 +192,13 @@ def get_fix_rules():
         ],
         "lodash": [
             {
-                "pattern": r"lodash\.merge\s*\(\s*\{\s*\}\s*,\s*(req\.\w+|req\.body)",
+                "pattern": r"lodash\.merge\s*\(\s*\{\s*\}\s*,\s*(req\.\w+|req\.body)\s*\)",
                 "replacement": r"Object.assign({}, \1)",
                 "description": "lodash.merge with user input -> Object.assign (safe)",
                 "validate": lambda old, new: "Object.assign" in new,
             },
             {
-                "pattern": r"lodash\.merge\s*\(\s*\{\s*\}\s*,\s*(\w+)\)",
+                "pattern": r"lodash\.merge\s*\(\s*\{\s*\}\s*,\s*(\w+)\s*\)",
                 "replacement": r"Object.assign({}, \1)",
                 "description": "lodash.merge -> Object.assign",
                 "validate": lambda old, new: "Object.assign" in new,

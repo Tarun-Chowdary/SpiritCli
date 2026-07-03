@@ -99,6 +99,7 @@ class Engine:
             score=score,
             timestamp=datetime.now().isoformat(),
         )
+        
 
         return report
 
@@ -184,14 +185,24 @@ class Engine:
     def _collect_files(self):
         collected = []
         extensions = (".js", ".ts", ".py", ".jsx", ".tsx")
+
+        # If the target is a single file
+        if os.path.isfile(self.path):
+            if self.path.endswith(extensions):
+                collected.append(self.path)
+            return collected
+
+        # Otherwise scan the directory
         for root, dirs, files in os.walk(self.path):
             dirs[:] = [
                 d for d in dirs
                 if d not in ["node_modules", "venv", ".git", "__pycache__"]
             ]
+
             for file in files:
                 if file.endswith(extensions):
                     collected.append(os.path.join(root, file))
+
         return collected
 
     def _collect_dependencies(self):
@@ -235,29 +246,51 @@ class Engine:
 
         return deps
 
-    # ── CONFIG ANALYSIS ─────────────────────────────────────
+ # ── CONFIG ANALYSIS ─────────────────────────────────────
 
     def _run_analysis(self, files):
         findings = []
+
         try:
             from ast_engine.extractors import JSExtractor
+            from ast_engine.python_extractor import PythonExtractor
             from config_analysis import ConfigAnalyzer
 
-            extractor = JSExtractor()
+            js_extractor = JSExtractor()
+            py_extractor = PythonExtractor()
             analyzer = ConfigAnalyzer()
 
             for filepath in files:
                 try:
                     with open(filepath, "r", encoding="utf-8") as f:
                         source = f.read()
-                    configs = extractor.extract_all(source, filepath)
+
+                    configs = []
+
+                    # JavaScript / TypeScript
+                    if filepath.endswith((".js", ".ts", ".jsx", ".tsx")):
+                        configs = js_extractor.extract_all(source, filepath)
+
+                    # Python
+                    elif filepath.endswith(".py"):
+                        configs = py_extractor.extract_all(source, filepath)
+
+                    # Skip unsupported files
+                    else:
+                        continue
+
                     file_findings = analyzer.analyze_file(filepath, configs)
-                    findings.extend(file_findings)
+
+                    if file_findings:
+                        findings.extend(file_findings)
+
                 except Exception:
-                    pass
+                    # Continue scanning even if one file fails
+                    continue
+
         except Exception:
             pass
-
+        
         return findings
 
     # ── CVE CHECK — PARALLEL ────────────────────────────────
@@ -497,7 +530,7 @@ class Engine:
 
         config_libraries = [
             "bcrypt", "jwt", "jsonwebtoken",
-            "axios", "mongoose", "express", "lodash",
+            "axios", "mongoose", "express", "lodash", "requests",
         ]
 
         config_findings = [

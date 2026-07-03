@@ -189,3 +189,34 @@ class RuleEngine:
             )
 
         return findings
+    
+    def evaluate_requests(self, extracted):
+        findings = []
+
+        rules = self.knowledge_base.get("requests", {})
+        patterns = rules.get("patterns", {})
+
+        parameter = extracted.get("parameter")
+        value = extracted.get("value")
+
+        if parameter == "verify" and value is False:
+            pattern = patterns.get("verify_false", {})
+
+            findings.append(
+                {
+                    "severity": pattern.get("severity", "critical"),
+                    "library": "requests",
+                    "parameter": "verify",
+                    "value": False,
+                    "message": pattern.get(
+                        "message",
+                        "SSL certificate verification is disabled."
+                    ),
+                    "fix": pattern.get(
+                        "fix",
+                        "Set verify=True"
+                    ),
+                }
+            )
+
+        return findings

@@ -1,0 +1,14 @@
+{
+  "library": "requests",
+  "description": "Python HTTP for Humans",
+  "rules": [
+    {
+      "parameter": "verify",
+      "dangerous_values": ["False"],
+      "severity": "CRITICAL",
+      "title": "Disabled SSL/TLS Certificate Verification",
+      "mitigation": "Remove verify=False or set it to verify=True to ensure secure encrypted communication.",
+      "cwe": "CWE-295"
+    }
+  ]
+}

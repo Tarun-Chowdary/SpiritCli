@@ -1,196 +1,36 @@
 {
-  "cve::express::4.17.1": {
-    "timestamp": 1783093636.4642153,
-    "data": {
-      "score": 93,
-      "findings_data": [
-        {
-          "severity": "high",
-          "library": "express",
-          "version": "^4.17.1",
-          "cve_id": "GHSA-qw6h-vgh9-j6wx"
-        }
-      ]
-    }
-  },
-  "cve::jsonwebtoken::8.5.1": {
-    "timestamp": 1783093636.4923444,
-    "data": {
-      "score": 80,
-      "findings_data": [
-        {
-          "severity": "high",
-          "library": "jsonwebtoken",
-          "version": "^8.5.1",
-          "cve_id": "GHSA-8cf7-32gw-wr33"
-        }
-      ]
-    }
-  },
-  "cve::mongoose::5.12.0": {
-    "timestamp": 1783093636.511298,
-    "data": {
-      "score": 30,
-      "findings_data": [
-        {
-          "severity": "critical",
-          "library": "mongoose",
-          "version": "^5.12.0",
-          "cve_id": "GHSA-9m93-w8w6-76hh"
-        }
-      ]
-    }
-  },
-  "cve::lodash::4.17.15": {
-    "timestamp": 1783093636.6139438,
-    "data": {
-      "score": 55,
-      "findings_data": [
-        {
-          "severity": "high",
-          "library": "lodash",
-          "version": "^4.17.15",
-          "cve_id": "GHSA-29mw-wpgm-hmr9"
-        }
-      ]
-    }
-  },
-  "cve::axios::0.21.1": {
-    "timestamp": 1783093637.2503295,
-    "data": {
-      "score": 53,
-      "findings_data": [
-        {
-          "severity": "high",
-          "library": "axios",
-          "version": "^0.21.1",
-          "cve_id": "GHSA-3g43-6gmg-66jw"
-        }
-      ]
-    }
-  },
-  "freshness::jsonwebtoken::8.5.1": {
-    "timestamp": 1783093640.0789099,
+  "freshness::watchdog::unknown": {
+    "timestamp": 1783098796.5828676,
     "data": {
       "details": {
-        "package": "jsonwebtoken",
-        "current": "8.5.1",
-        "latest": "9.0.3",
-        "score": 60.0,
-        "outdated": true
-      },
-      "finding_data": {
-        "severity": "low",
-        "library": "jsonwebtoken",
-        "current": "8.5.1",
-        "latest": "9.0.3"
-      }
-    }
-  },
-  "freshness::lodash::4.17.15": {
-    "timestamp": 1783093640.1977541,
-    "data": {
-      "details": {
-        "package": "lodash",
-        "current": "4.17.15",
-        "latest": "4.18.1",
-        "score": 90.0,
+        "package": "watchdog",
+        "current": "unknown",
+        "latest": "0.8.17",
+        "score": 70,
         "outdated": true
       },
       "finding_data": null
     }
   },
-  "freshness::xml-parser::1.2.1": {
-    "timestamp": 1783093640.2221344,
+  "freshness::tree-sitter::unknown": {
+    "timestamp": 1783098796.6444595,
     "data": {
       "details": {
-        "package": "xml-parser",
-        "current": "1.2.1",
-        "latest": "1.2.1",
-        "score": 100.0,
-        "outdated": false
+        "package": "tree-sitter",
+        "current": "unknown",
+        "latest": "0.25.0",
+        "score": 70,
+        "outdated": true
       },
       "finding_data": null
     }
   },
-  "freshness::bcrypt::5.0.0": {
-    "timestamp": 1783093640.3557003,
-    "data": {
-      "details": {
-        "package": "bcrypt",
-        "current": "5.0.0",
-        "latest": "6.0.0",
-        "score": 60.0,
-        "outdated": true
-      },
-      "finding_data": {
-        "severity": "low",
-        "library": "bcrypt",
-        "current": "5.0.0",
-        "latest": "6.0.0"
-      }
-    }
-  },
-  "freshness::axios::0.21.1": {
-    "timestamp": 1783093640.40336,
-    "data": {
-      "details": {
-        "package": "axios",
-        "current": "0.21.1",
-        "latest": "1.18.1",
-        "score": 60.0,
-        "outdated": true
-      },
-      "finding_data": {
-        "severity": "low",
-        "library": "axios",
-        "current": "0.21.1",
-        "latest": "1.18.1"
-      }
-    }
-  },
-  "freshness::express::4.17.1": {
-    "timestamp": 1783093640.4597824,
-    "data": {
-      "details": {
-        "package": "express",
-        "current": "4.17.1",
-        "latest": "5.2.1",
-        "score": 60.0,
-        "outdated": true
-      },
-      "finding_data": {
-        "severity": "low",
-        "library": "express",
-        "current": "4.17.1",
-        "latest": "5.2.1"
-      }
-    }
-  },
-  "freshness::mongoose::5.12.0": {
-    "timestamp": 1783093641.283925,
-    "data": {
-      "details": {
-        "package": "mongoose",
-        "current": "5.12.0",
-        "latest": "9.7.3",
-        "score": 20.0,
-        "outdated": true
-      },
-      "finding_data": {
-        "severity": "medium",
-        "library": "mongoose",
-        "current": "5.12.0",
-        "latest": "9.7.3"
-      }
-    }
-  },
-  "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\demo_apps\\vulnerable_bank_app": {
-    "hash": "8694273445064eeb1fd4b9ad3463f350",
-    "timestamp": "2026-07-03T22:05:42.760781",
+  "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli": {
+    "hash": "05fddb043e121f1d7c0ef9f9c9a00799",
+    "timestamp": "2026-07-03T22:43:25.293240",
     "report_data": {
-      "scan_path": "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\demo_apps\\vulnerable_bank_app",
-      "timestamp": "2026-07-03T22:05:42.758734",
+      "scan_path": "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli",
+      "timestamp": "2026-07-03T22:43:25.280499",
       "findings": [
         {
           "severity": "critical",
@@ -264,13 +104,554 @@
         },
         {
           "severity": "high",
+          "library": "lodash",
+          "file": "package.json",
+          "line": 0,
+          "message": "Undeclared import \u2014 lodash used in code but not declared",
+          "parameter": null,
+          "value": null,
+          "fix": "Add lodash to package.json dependencies"
+        },
+        {
+          "severity": "high",
           "library": "jsonwebtoken",
           "file": "package.json",
           "line": 0,
-          "message": "GHSA-8cf7-32gw-wr33 \u2014 jsonwebtoken@^8.5.1",
+          "message": "Undeclared import \u2014 jsonwebtoken used in code but not declared",
           "parameter": null,
           "value": null,
-          "fix": "Upgrade jsonwebtoken to latest version"
+          "fix": "Add jsonwebtoken to package.json dependencies"
+        },
+        {
+          "severity": "high",
+          "library": "express",
+          "file": "package.json",
+          "line": 0,
+          "message": "Undeclared import \u2014 express used in code but not declared",
+          "parameter": null,
+          "value": null,
+          "fix": "Add express to package.json dependencies"
+        },
+        {
+          "severity": "high",
+          "library": "axios",
+          "file": "package.json",
+          "line": 0,
+          "message": "Undeclared import \u2014 axios used in code but not declared",
+          "parameter": null,
+          "value": null,
+          "fix": "Add axios to package.json dependencies"
+        },
+        {
+          "severity": "high",
+          "library": "mongoose",
+          "file": "package.json",
+          "line": 0,
+          "message": "Undeclared import \u2014 mongoose used in code but not declared",
+          "parameter": null,
+          "value": null,
+          "fix": "Add mongoose to package.json dependencies"
+        },
+        {
+          "severity": "high",
+          "library": "helmet",
+          "file": "package.json",
+          "line": 0,
+          "message": "Undeclared import \u2014 helmet used in code but not declared",
+          "parameter": null,
+          "value": null,
+          "fix": "Add helmet to package.json dependencies"
+        },
+        {
+          "severity": "high",
+          "library": "bcrypt",
+          "file": "package.json",
+          "line": 0,
+          "message": "Undeclared import \u2014 bcrypt used in code but not declared",
+          "parameter": null,
+          "value": null,
+          "fix": "Add bcrypt to package.json dependencies"
+        },
+        {
+          "severity": "high",
+          "library": "click",
+          "file": "package.json",
+          "line": 0,
+          "message": "[Trust] Single maintainer \u2014 high bus factor risk",
+          "parameter": null,
+          "value": null,
+          "fix": "Review click \u2014 trust score: 49.0/100"
+        },
+        {
+          "severity": "high",
+          "library": "rich",
+          "file": "package.json",
+          "line": 0,
+          "message": "[Trust] Single maintainer \u2014 high bus factor risk",
+          "parameter": null,
+          "value": null,
+          "fix": "Review rich \u2014 trust score: 49.0/100"
+        },
+        {
+          "severity": "high",
+          "library": "watchdog",
+          "file": "package.json",
+          "line": 0,
+          "message": "[Trust] Single maintainer \u2014 high bus factor risk",
+          "parameter": null,
+          "value": null,
+          "fix": "Review watchdog \u2014 trust score: 49.0/100"
+        },
+        {
+          "severity": "critical",
+          "library": "requests",
+          "file": "package.json",
+          "line": 0,
+          "message": "[Trust] No updates in 4 years \u2014 possibly abandoned",
+          "parameter": null,
+          "value": null,
+          "fix": "Review requests \u2014 trust score: 7.8/100"
+        },
+        {
+          "severity": "high",
+          "library": "jinja2",
+          "file": "package.json",
+          "line": 0,
+          "message": "[Trust] Single maintainer \u2014 high bus factor risk",
+          "parameter": null,
+          "value": null,
+          "fix": "Review jinja2 \u2014 trust score: 49.0/100"
+        },
+        {
+          "severity": "high",
+          "library": "pytest",
+          "file": "package.json",
+          "line": 0,
+          "message": "[Trust] Single maintainer \u2014 high bus factor risk",
+          "parameter": null,
+          "value": null,
+          "fix": "Review pytest \u2014 trust score: 49.0/100"
+        }
+      ],
+      "dependencies": [
+        {
+          "name": "click",
+          "version": "unknown",
+          "is_direct": true,
+          "is_dev": false,
+          "transitive_path": [],
+          "cves": [],
+          "trust_score": null
+        },
+        {
+          "name": "rich",
+          "version": "unknown",
+          "is_direct": true,
+          "is_dev": false,
+          "transitive_path": [],
+          "cves": [],
+          "trust_score": null
+        },
+        {
+          "name": "tree-sitter",
+          "version": "unknown",
+          "is_direct": true,
+          "is_dev": false,
+          "transitive_path": [],
+          "cves": [],
+          "trust_score": null
+        },
+        {
+          "name": "tree-sitter-javascript",
+          "version": "unknown",
+          "is_direct": true,
+          "is_dev": false,
+          "transitive_path": [],
+          "cves": [],
+          "trust_score": null
+        },
+        {
+          "name": "tree-sitter-python",
+          "version": "unknown",
+          "is_direct": true,
+          "is_dev": false,
+          "transitive_path": [],
+          "cves": [],
+          "trust_score": null
+        },
+        {
+          "name": "watchdog",
+          "version": "unknown",
+          "is_direct": true,
+          "is_dev": false,
+          "transitive_path": [],
+          "cves": [],
+          "trust_score": null
+        },
+        {
+          "name": "gitpython",
+          "version": "unknown",
+          "is_direct": true,
+          "is_dev": false,
+          "transitive_path": [],
+          "cves": [],
+          "trust_score": null
+        },
+        {
+          "name": "requests",
+          "version": "unknown",
+          "is_direct": true,
+          "is_dev": false,
+          "transitive_path": [],
+          "cves": [],
+          "trust_score": null
+        },
+        {
+          "name": "jinja2",
+          "version": "unknown",
+          "is_direct": true,
+          "is_dev": false,
+          "transitive_path": [],
+          "cves": [],
+          "trust_score": null
+        },
+        {
+          "name": "pytest",
+          "version": "unknown",
+          "is_direct": true,
+          "is_dev": false,
+          "transitive_path": [],
+          "cves": [],
+          "trust_score": null
+        }
+      ],
+      "score": {
+        "config_score": 30,
+        "cve_score": 100.0,
+        "trust_score": 37.7,
+        "freshness_score": 70.0,
+        "phantom_score": 30,
+        "total": 55.0,
+        "zone": "WARNING"
+      }
+    }
+  },
+  "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\testpython.py": {
+    "hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "timestamp": "2026-07-03T23:19:11.352954",
+    "report_data": {
+      "scan_path": "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\testpython.py",
+      "timestamp": "2026-07-03T23:19:11.350199",
+      "findings": [
+        {
+          "severity": "critical",
+          "library": "requests",
+          "file": "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\testpython.py",
+          "line": 5,
+          "message": "SSL certificate verification is disabled.",
+          "parameter": "verify",
+          "value": "False",
+          "fix": "Set verify=True"
+        }
+      ],
+      "dependencies": [],
+      "score": {
+        "config_score": 85,
+        "cve_score": 100.0,
+        "trust_score": 100.0,
+        "freshness_score": 100.0,
+        "phantom_score": 100,
+        "total": 95.5,
+        "zone": "SAFE"
+      }
+    }
+  },
+  "cve::bcrypt::5.0.0": {
+    "timestamp": 1783099097.7844114,
+    "data": {
+      "score": 100.0,
+      "findings_data": []
+    }
+  },
+  "cve::xml-parser::1.2.1": {
+    "timestamp": 1783099097.8186452,
+    "data": {
+      "score": 100.0,
+      "findings_data": []
+    }
+  },
+  "cve::jsonwebtoken::8.5.1": {
+    "timestamp": 1783099097.892119,
+    "data": {
+      "score": 80,
+      "findings_data": [
+        {
+          "severity": "high",
+          "library": "jsonwebtoken",
+          "version": "^8.5.1",
+          "cve_id": "GHSA-8cf7-32gw-wr33"
+        }
+      ]
+    }
+  },
+  "cve::express::4.17.1": {
+    "timestamp": 1783099097.9536202,
+    "data": {
+      "score": 93,
+      "findings_data": [
+        {
+          "severity": "high",
+          "library": "express",
+          "version": "^4.17.1",
+          "cve_id": "GHSA-qw6h-vgh9-j6wx"
+        }
+      ]
+    }
+  },
+  "cve::lodash::4.17.15": {
+    "timestamp": 1783099098.0154703,
+    "data": {
+      "score": 55,
+      "findings_data": [
+        {
+          "severity": "high",
+          "library": "lodash",
+          "version": "^4.17.15",
+          "cve_id": "GHSA-29mw-wpgm-hmr9"
+        }
+      ]
+    }
+  },
+  "cve::mongoose::5.12.0": {
+    "timestamp": 1783099098.060422,
+    "data": {
+      "score": 30,
+      "findings_data": [
+        {
+          "severity": "critical",
+          "library": "mongoose",
+          "version": "^5.12.0",
+          "cve_id": "GHSA-9m93-w8w6-76hh"
+        }
+      ]
+    }
+  },
+  "cve::axios::0.21.1": {
+    "timestamp": 1783099099.0856006,
+    "data": {
+      "score": 53,
+      "findings_data": [
+        {
+          "severity": "high",
+          "library": "axios",
+          "version": "^0.21.1",
+          "cve_id": "GHSA-3g43-6gmg-66jw"
+        }
+      ]
+    }
+  },
+  "freshness::jsonwebtoken::8.5.1": {
+    "timestamp": 1783099100.9355545,
+    "data": {
+      "details": {
+        "package": "jsonwebtoken",
+        "current": "8.5.1",
+        "latest": "9.0.3",
+        "score": 60.0,
+        "outdated": true
+      },
+      "finding_data": {
+        "severity": "low",
+        "library": "jsonwebtoken",
+        "current": "8.5.1",
+        "latest": "9.0.3"
+      }
+    }
+  },
+  "freshness::lodash::4.17.15": {
+    "timestamp": 1783099100.9856758,
+    "data": {
+      "details": {
+        "package": "lodash",
+        "current": "4.17.15",
+        "latest": "4.18.1",
+        "score": 90.0,
+        "outdated": true
+      },
+      "finding_data": null
+    }
+  },
+  "freshness::express::4.17.1": {
+    "timestamp": 1783099101.1646411,
+    "data": {
+      "details": {
+        "package": "express",
+        "current": "4.17.1",
+        "latest": "5.2.1",
+        "score": 60.0,
+        "outdated": true
+      },
+      "finding_data": {
+        "severity": "low",
+        "library": "express",
+        "current": "4.17.1",
+        "latest": "5.2.1"
+      }
+    }
+  },
+  "freshness::bcrypt::5.0.0": {
+    "timestamp": 1783099101.1724331,
+    "data": {
+      "details": {
+        "package": "bcrypt",
+        "current": "5.0.0",
+        "latest": "6.0.0",
+        "score": 60.0,
+        "outdated": true
+      },
+      "finding_data": {
+        "severity": "low",
+        "library": "bcrypt",
+        "current": "5.0.0",
+        "latest": "6.0.0"
+      }
+    }
+  },
+  "freshness::axios::0.21.1": {
+    "timestamp": 1783099101.2003906,
+    "data": {
+      "details": {
+        "package": "axios",
+        "current": "0.21.1",
+        "latest": "1.18.1",
+        "score": 60.0,
+        "outdated": true
+      },
+      "finding_data": {
+        "severity": "low",
+        "library": "axios",
+        "current": "0.21.1",
+        "latest": "1.18.1"
+      }
+    }
+  },
+  "freshness::xml-parser::1.2.1": {
+    "timestamp": 1783099101.2357833,
+    "data": {
+      "details": {
+        "package": "xml-parser",
+        "current": "1.2.1",
+        "latest": "1.2.1",
+        "score": 100.0,
+        "outdated": false
+      },
+      "finding_data": null
+    }
+  },
+  "freshness::mongoose::5.12.0": {
+    "timestamp": 1783099101.5723567,
+    "data": {
+      "details": {
+        "package": "mongoose",
+        "current": "5.12.0",
+        "latest": "9.7.3",
+        "score": 20.0,
+        "outdated": true
+      },
+      "finding_data": {
+        "severity": "medium",
+        "library": "mongoose",
+        "current": "5.12.0",
+        "latest": "9.7.3"
+      }
+    }
+  },
+  "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\demo_apps\\vulnerable_bank_app": {
+    "hash": "8694273445064eeb1fd4b9ad3463f350",
+    "timestamp": "2026-07-03T23:15:46.123795",
+    "report_data": {
+      "scan_path": "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\demo_apps\\vulnerable_bank_app",
+      "timestamp": "2026-07-03T23:15:46.119152",
+      "findings": [
+        {
+          "severity": "critical",
+          "library": "bcrypt",
+          "file": "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\demo_apps\\vulnerable_bank_app\\auth.js",
+          "line": 14,
+          "message": "bcrypt rounds=4 is too low -- brute-forceable in minutes. Minimum is 10.",
+          "parameter": "rounds",
+          "value": "4",
+          "fix": "Increase rounds to 12"
+        },
+        {
+          "severity": "critical",
+          "library": "jwt",
+          "file": "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\demo_apps\\vulnerable_bank_app\\auth.js",
+          "line": 19,
+          "message": "JWT algorithm:none detected -- allows unsigned tokens. Anyone can forge tokens.",
+          "parameter": "algorithm",
+          "value": "none",
+          "fix": "Set algorithm to HS256 or RS256"
+        },
+        {
+          "severity": "medium",
+          "library": "mongoose",
+          "file": "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\demo_apps\\vulnerable_bank_app\\auth.js",
+          "line": 6,
+          "message": "Mongoose schema missing required/validation -- arbitrary data stored",
+          "parameter": "validation",
+          "value": "missing",
+          "fix": "Add required:true and validation to schema fields"
+        },
+        {
+          "severity": "critical",
+          "library": "axios",
+          "file": "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\demo_apps\\vulnerable_bank_app\\payment.js",
+          "line": 16,
+          "message": "axios rejectUnauthorized:false -- TLS validation disabled. Vulnerable to MITM attacks.",
+          "parameter": "rejectUnauthorized",
+          "value": "false",
+          "fix": "Remove rejectUnauthorized:false or set to true"
+        },
+        {
+          "severity": "high",
+          "library": "express",
+          "file": "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\demo_apps\\vulnerable_bank_app\\payment.js",
+          "line": 11,
+          "message": "CORS wildcard (*) allows any origin -- dangerous in banking",
+          "parameter": "cors_origin",
+          "value": "*",
+          "fix": "Restrict CORS to specific trusted origins"
+        },
+        {
+          "severity": "high",
+          "library": "express",
+          "file": "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\demo_apps\\vulnerable_bank_app\\payment.js",
+          "line": 1,
+          "message": "Express app missing helmet -- security headers not set",
+          "parameter": "helmet",
+          "value": "missing",
+          "fix": "Add helmet middleware: app.use(helmet())"
+        },
+        {
+          "severity": "critical",
+          "library": "lodash",
+          "file": "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\demo_apps\\vulnerable_bank_app\\payment.js",
+          "line": 21,
+          "message": "lodash.merge with user input -- prototype pollution vulnerability",
+          "parameter": "merge",
+          "value": "user_input",
+          "fix": "Use lodash.mergeWith with sanitized input or use spread operator"
+        },
+        {
+          "severity": "high",
+          "library": "express",
+          "file": "package.json",
+          "line": 0,
+          "message": "GHSA-qw6h-vgh9-j6wx \u2014 express@^4.17.1",
+          "parameter": null,
+          "value": null,
+          "fix": "Upgrade express to latest version"
         },
         {
           "severity": "high",
@@ -284,6 +665,16 @@
         },
         {
           "severity": "high",
+          "library": "jsonwebtoken",
+          "file": "package.json",
+          "line": 0,
+          "message": "GHSA-8cf7-32gw-wr33 \u2014 jsonwebtoken@^8.5.1",
+          "parameter": null,
+          "value": null,
+          "fix": "Upgrade jsonwebtoken to latest version"
+        },
+        {
+          "severity": "high",
           "library": "lodash",
           "file": "package.json",
           "line": 0,
@@ -291,16 +682,6 @@
           "parameter": null,
           "value": null,
           "fix": "Upgrade lodash to latest version"
-        },
-        {
-          "severity": "high",
-          "library": "express",
-          "file": "package.json",
-          "line": 0,
-          "message": "GHSA-qw6h-vgh9-j6wx \u2014 express@^4.17.1",
-          "parameter": null,
-          "value": null,
-          "fix": "Upgrade express to latest version"
         },
         {
           "severity": "critical",
@@ -344,16 +725,6 @@
         },
         {
           "severity": "low",
-          "library": "express",
-          "file": "package.json",
-          "line": 0,
-          "message": "express is outdated \u2014 current: 4.17.1 latest: 5.2.1",
-          "parameter": null,
-          "value": null,
-          "fix": "Upgrade express to 5.2.1"
-        },
-        {
-          "severity": "low",
           "library": "axios",
           "file": "package.json",
           "line": 0,
@@ -361,6 +732,16 @@
           "parameter": null,
           "value": null,
           "fix": "Upgrade axios to 1.18.1"
+        },
+        {
+          "severity": "low",
+          "library": "express",
+          "file": "package.json",
+          "line": 0,
+          "message": "express is outdated \u2014 current: 4.17.1 latest: 5.2.1",
+          "parameter": null,
+          "value": null,
+          "fix": "Upgrade express to 5.2.1"
         },
         {
           "severity": "medium",
@@ -457,20 +838,6 @@
         "total": 60.9,
         "zone": "WARNING"
       }
-    }
-  },
-  "cve::xml-parser::1.2.1": {
-    "timestamp": 1783094944.462535,
-    "data": {
-      "score": 100.0,
-      "findings_data": []
-    }
-  },
-  "cve::bcrypt::5.0.0": {
-    "timestamp": 1783095398.4824033,
-    "data": {
-      "score": 100.0,
-      "findings_data": []
     }
   }
 }

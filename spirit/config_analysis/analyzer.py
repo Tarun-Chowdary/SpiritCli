@@ -26,7 +26,8 @@ class ConfigAnalyzer:
                 raw_findings = self.rule_engine.evaluate_express(config)
             elif library == "lodash":
                 raw_findings = self.rule_engine.evaluate_lodash(config)
-
+            elif library == "requests":
+                raw_findings = self.rule_engine.evaluate_requests(config)
             for rf in raw_findings:
                 findings.append(
                     Finding(

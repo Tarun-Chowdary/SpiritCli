@@ -188,6 +188,12 @@ def get_fix_rules():
                 "replacement": r"\g<1>'https://yourdomain.com'",
                 "description": "express CORS wildcard -> specific origin",
                 "validate": lambda old, new: "yourdomain" in new,
+            },
+            {
+                "pattern": r"((?:const|let|var)\s+app\s*=\s*express\(\)\s*;?)",
+                "replacement": r"const helmet = require('helmet');\n\g<1>\napp.use(helmet()); // [SPIRIT] Auto-remediated missing security headers",
+                "description": "express missing helmet -> injected middleware",
+                "validate": lambda old, new: "helmet()" in new,
             }
         ],
         "lodash": [

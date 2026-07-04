@@ -1,401 +1,6 @@
 {
-  "freshness::watchdog::unknown": {
-    "timestamp": 1783098796.5828676,
-    "data": {
-      "details": {
-        "package": "watchdog",
-        "current": "unknown",
-        "latest": "0.8.17",
-        "score": 70,
-        "outdated": true
-      },
-      "finding_data": null
-    }
-  },
-  "freshness::tree-sitter::unknown": {
-    "timestamp": 1783098796.6444595,
-    "data": {
-      "details": {
-        "package": "tree-sitter",
-        "current": "unknown",
-        "latest": "0.25.0",
-        "score": 70,
-        "outdated": true
-      },
-      "finding_data": null
-    }
-  },
-  "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli": {
-    "hash": "05fddb043e121f1d7c0ef9f9c9a00799",
-    "timestamp": "2026-07-03T22:43:25.293240",
-    "report_data": {
-      "scan_path": "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli",
-      "timestamp": "2026-07-03T22:43:25.280499",
-      "findings": [
-        {
-          "severity": "critical",
-          "library": "bcrypt",
-          "file": "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\demo_apps\\vulnerable_bank_app\\auth.js",
-          "line": 14,
-          "message": "bcrypt rounds=4 is too low -- brute-forceable in minutes. Minimum is 10.",
-          "parameter": "rounds",
-          "value": "4",
-          "fix": "Increase rounds to 12"
-        },
-        {
-          "severity": "critical",
-          "library": "jwt",
-          "file": "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\demo_apps\\vulnerable_bank_app\\auth.js",
-          "line": 19,
-          "message": "JWT algorithm:none detected -- allows unsigned tokens. Anyone can forge tokens.",
-          "parameter": "algorithm",
-          "value": "none",
-          "fix": "Set algorithm to HS256 or RS256"
-        },
-        {
-          "severity": "medium",
-          "library": "mongoose",
-          "file": "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\demo_apps\\vulnerable_bank_app\\auth.js",
-          "line": 6,
-          "message": "Mongoose schema missing required/validation -- arbitrary data stored",
-          "parameter": "validation",
-          "value": "missing",
-          "fix": "Add required:true and validation to schema fields"
-        },
-        {
-          "severity": "critical",
-          "library": "axios",
-          "file": "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\demo_apps\\vulnerable_bank_app\\payment.js",
-          "line": 16,
-          "message": "axios rejectUnauthorized:false -- TLS validation disabled. Vulnerable to MITM attacks.",
-          "parameter": "rejectUnauthorized",
-          "value": "false",
-          "fix": "Remove rejectUnauthorized:false or set to true"
-        },
-        {
-          "severity": "high",
-          "library": "express",
-          "file": "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\demo_apps\\vulnerable_bank_app\\payment.js",
-          "line": 11,
-          "message": "CORS wildcard (*) allows any origin -- dangerous in banking",
-          "parameter": "cors_origin",
-          "value": "*",
-          "fix": "Restrict CORS to specific trusted origins"
-        },
-        {
-          "severity": "high",
-          "library": "express",
-          "file": "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\demo_apps\\vulnerable_bank_app\\payment.js",
-          "line": 1,
-          "message": "Express app missing helmet -- security headers not set",
-          "parameter": "helmet",
-          "value": "missing",
-          "fix": "Add helmet middleware: app.use(helmet())"
-        },
-        {
-          "severity": "critical",
-          "library": "lodash",
-          "file": "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\demo_apps\\vulnerable_bank_app\\payment.js",
-          "line": 21,
-          "message": "lodash.merge with user input -- prototype pollution vulnerability",
-          "parameter": "merge",
-          "value": "user_input",
-          "fix": "Use lodash.mergeWith with sanitized input or use spread operator"
-        },
-        {
-          "severity": "high",
-          "library": "lodash",
-          "file": "package.json",
-          "line": 0,
-          "message": "Undeclared import \u2014 lodash used in code but not declared",
-          "parameter": null,
-          "value": null,
-          "fix": "Add lodash to package.json dependencies"
-        },
-        {
-          "severity": "high",
-          "library": "jsonwebtoken",
-          "file": "package.json",
-          "line": 0,
-          "message": "Undeclared import \u2014 jsonwebtoken used in code but not declared",
-          "parameter": null,
-          "value": null,
-          "fix": "Add jsonwebtoken to package.json dependencies"
-        },
-        {
-          "severity": "high",
-          "library": "express",
-          "file": "package.json",
-          "line": 0,
-          "message": "Undeclared import \u2014 express used in code but not declared",
-          "parameter": null,
-          "value": null,
-          "fix": "Add express to package.json dependencies"
-        },
-        {
-          "severity": "high",
-          "library": "axios",
-          "file": "package.json",
-          "line": 0,
-          "message": "Undeclared import \u2014 axios used in code but not declared",
-          "parameter": null,
-          "value": null,
-          "fix": "Add axios to package.json dependencies"
-        },
-        {
-          "severity": "high",
-          "library": "mongoose",
-          "file": "package.json",
-          "line": 0,
-          "message": "Undeclared import \u2014 mongoose used in code but not declared",
-          "parameter": null,
-          "value": null,
-          "fix": "Add mongoose to package.json dependencies"
-        },
-        {
-          "severity": "high",
-          "library": "helmet",
-          "file": "package.json",
-          "line": 0,
-          "message": "Undeclared import \u2014 helmet used in code but not declared",
-          "parameter": null,
-          "value": null,
-          "fix": "Add helmet to package.json dependencies"
-        },
-        {
-          "severity": "high",
-          "library": "bcrypt",
-          "file": "package.json",
-          "line": 0,
-          "message": "Undeclared import \u2014 bcrypt used in code but not declared",
-          "parameter": null,
-          "value": null,
-          "fix": "Add bcrypt to package.json dependencies"
-        },
-        {
-          "severity": "high",
-          "library": "click",
-          "file": "package.json",
-          "line": 0,
-          "message": "[Trust] Single maintainer \u2014 high bus factor risk",
-          "parameter": null,
-          "value": null,
-          "fix": "Review click \u2014 trust score: 49.0/100"
-        },
-        {
-          "severity": "high",
-          "library": "rich",
-          "file": "package.json",
-          "line": 0,
-          "message": "[Trust] Single maintainer \u2014 high bus factor risk",
-          "parameter": null,
-          "value": null,
-          "fix": "Review rich \u2014 trust score: 49.0/100"
-        },
-        {
-          "severity": "high",
-          "library": "watchdog",
-          "file": "package.json",
-          "line": 0,
-          "message": "[Trust] Single maintainer \u2014 high bus factor risk",
-          "parameter": null,
-          "value": null,
-          "fix": "Review watchdog \u2014 trust score: 49.0/100"
-        },
-        {
-          "severity": "critical",
-          "library": "requests",
-          "file": "package.json",
-          "line": 0,
-          "message": "[Trust] No updates in 4 years \u2014 possibly abandoned",
-          "parameter": null,
-          "value": null,
-          "fix": "Review requests \u2014 trust score: 7.8/100"
-        },
-        {
-          "severity": "high",
-          "library": "jinja2",
-          "file": "package.json",
-          "line": 0,
-          "message": "[Trust] Single maintainer \u2014 high bus factor risk",
-          "parameter": null,
-          "value": null,
-          "fix": "Review jinja2 \u2014 trust score: 49.0/100"
-        },
-        {
-          "severity": "high",
-          "library": "pytest",
-          "file": "package.json",
-          "line": 0,
-          "message": "[Trust] Single maintainer \u2014 high bus factor risk",
-          "parameter": null,
-          "value": null,
-          "fix": "Review pytest \u2014 trust score: 49.0/100"
-        }
-      ],
-      "dependencies": [
-        {
-          "name": "click",
-          "version": "unknown",
-          "is_direct": true,
-          "is_dev": false,
-          "transitive_path": [],
-          "cves": [],
-          "trust_score": null
-        },
-        {
-          "name": "rich",
-          "version": "unknown",
-          "is_direct": true,
-          "is_dev": false,
-          "transitive_path": [],
-          "cves": [],
-          "trust_score": null
-        },
-        {
-          "name": "tree-sitter",
-          "version": "unknown",
-          "is_direct": true,
-          "is_dev": false,
-          "transitive_path": [],
-          "cves": [],
-          "trust_score": null
-        },
-        {
-          "name": "tree-sitter-javascript",
-          "version": "unknown",
-          "is_direct": true,
-          "is_dev": false,
-          "transitive_path": [],
-          "cves": [],
-          "trust_score": null
-        },
-        {
-          "name": "tree-sitter-python",
-          "version": "unknown",
-          "is_direct": true,
-          "is_dev": false,
-          "transitive_path": [],
-          "cves": [],
-          "trust_score": null
-        },
-        {
-          "name": "watchdog",
-          "version": "unknown",
-          "is_direct": true,
-          "is_dev": false,
-          "transitive_path": [],
-          "cves": [],
-          "trust_score": null
-        },
-        {
-          "name": "gitpython",
-          "version": "unknown",
-          "is_direct": true,
-          "is_dev": false,
-          "transitive_path": [],
-          "cves": [],
-          "trust_score": null
-        },
-        {
-          "name": "requests",
-          "version": "unknown",
-          "is_direct": true,
-          "is_dev": false,
-          "transitive_path": [],
-          "cves": [],
-          "trust_score": null
-        },
-        {
-          "name": "jinja2",
-          "version": "unknown",
-          "is_direct": true,
-          "is_dev": false,
-          "transitive_path": [],
-          "cves": [],
-          "trust_score": null
-        },
-        {
-          "name": "pytest",
-          "version": "unknown",
-          "is_direct": true,
-          "is_dev": false,
-          "transitive_path": [],
-          "cves": [],
-          "trust_score": null
-        }
-      ],
-      "score": {
-        "config_score": 30,
-        "cve_score": 100.0,
-        "trust_score": 37.7,
-        "freshness_score": 70.0,
-        "phantom_score": 30,
-        "total": 55.0,
-        "zone": "WARNING"
-      }
-    }
-  },
-  "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\testpython.py": {
-    "hash": "d41d8cd98f00b204e9800998ecf8427e",
-    "timestamp": "2026-07-04T17:23:28.774367",
-    "report_data": {
-      "scan_path": "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\testpython.py",
-      "timestamp": "2026-07-04T17:23:28.772747",
-      "findings": [
-        {
-          "severity": "critical",
-          "library": "requests",
-          "file": "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\testpython.py",
-          "line": 5,
-          "message": "SSL certificate verification is disabled.",
-          "parameter": "verify",
-          "value": "False",
-          "fix": "Set verify=True"
-        }
-      ],
-      "dependencies": [],
-      "score": {
-        "config_score": 85,
-        "cve_score": 100.0,
-        "trust_score": 100.0,
-        "freshness_score": 100.0,
-        "phantom_score": 100,
-        "total": 95.5,
-        "zone": "SAFE"
-      }
-    }
-  },
-  "cve::bcrypt::5.0.0": {
-    "timestamp": 1783099097.7844114,
-    "data": {
-      "score": 100.0,
-      "findings_data": []
-    }
-  },
-  "cve::xml-parser::1.2.1": {
-    "timestamp": 1783099097.8186452,
-    "data": {
-      "score": 100.0,
-      "findings_data": []
-    }
-  },
-  "cve::jsonwebtoken::8.5.1": {
-    "timestamp": 1783099097.892119,
-    "data": {
-      "score": 80,
-      "findings_data": [
-        {
-          "severity": "high",
-          "library": "jsonwebtoken",
-          "version": "^8.5.1",
-          "cve_id": "GHSA-8cf7-32gw-wr33"
-        }
-      ]
-    }
-  },
   "cve::express::4.17.1": {
-    "timestamp": 1783099097.9536202,
+    "timestamp": 1783182579.7544472,
     "data": {
       "score": 93,
       "findings_data": [
@@ -403,27 +8,29 @@
           "severity": "high",
           "library": "express",
           "version": "^4.17.1",
-          "cve_id": "GHSA-qw6h-vgh9-j6wx"
+          "cve_id": "GHSA-qw6h-vgh9-j6wx",
+          "transitive_path": []
         }
       ]
     }
   },
-  "cve::lodash::4.17.15": {
-    "timestamp": 1783099098.0154703,
+  "cve::jsonwebtoken::8.5.1": {
+    "timestamp": 1783182579.7711663,
     "data": {
-      "score": 55,
+      "score": 80,
       "findings_data": [
         {
           "severity": "high",
-          "library": "lodash",
-          "version": "^4.17.15",
-          "cve_id": "GHSA-29mw-wpgm-hmr9"
+          "library": "jsonwebtoken",
+          "version": "^8.5.1",
+          "cve_id": "GHSA-8cf7-32gw-wr33",
+          "transitive_path": []
         }
       ]
     }
   },
   "cve::mongoose::5.12.0": {
-    "timestamp": 1783099098.060422,
+    "timestamp": 1783182579.8182068,
     "data": {
       "score": 30,
       "findings_data": [
@@ -431,13 +38,29 @@
           "severity": "critical",
           "library": "mongoose",
           "version": "^5.12.0",
-          "cve_id": "GHSA-9m93-w8w6-76hh"
+          "cve_id": "GHSA-9m93-w8w6-76hh",
+          "transitive_path": []
+        }
+      ]
+    }
+  },
+  "cve::lodash::4.17.15": {
+    "timestamp": 1783182579.8482845,
+    "data": {
+      "score": 55,
+      "findings_data": [
+        {
+          "severity": "high",
+          "library": "lodash",
+          "version": "^4.17.15",
+          "cve_id": "GHSA-29mw-wpgm-hmr9",
+          "transitive_path": []
         }
       ]
     }
   },
   "cve::axios::0.21.1": {
-    "timestamp": 1783099099.0856006,
+    "timestamp": 1783182580.375177,
     "data": {
       "score": 53,
       "findings_data": [
@@ -445,13 +68,27 @@
           "severity": "high",
           "library": "axios",
           "version": "^0.21.1",
-          "cve_id": "GHSA-3g43-6gmg-66jw"
+          "cve_id": "GHSA-3g43-6gmg-66jw",
+          "transitive_path": []
         }
       ]
     }
   },
+  "freshness::lodash::4.17.15": {
+    "timestamp": 1783182582.7689114,
+    "data": {
+      "details": {
+        "package": "lodash",
+        "current": "4.17.15",
+        "latest": "4.18.1",
+        "score": 90.0,
+        "outdated": true
+      },
+      "finding_data": null
+    }
+  },
   "freshness::jsonwebtoken::8.5.1": {
-    "timestamp": 1783166072.4527874,
+    "timestamp": 1783182583.6790333,
     "data": {
       "details": {
         "package": "jsonwebtoken",
@@ -464,43 +101,13 @@
         "severity": "low",
         "library": "jsonwebtoken",
         "current": "8.5.1",
-        "latest": "9.0.3"
-      }
-    }
-  },
-  "freshness::lodash::4.17.15": {
-    "timestamp": 1783166041.8532834,
-    "data": {
-      "details": {
-        "package": "lodash",
-        "current": "4.17.15",
-        "latest": "4.18.1",
-        "score": 90.0,
-        "outdated": true
-      },
-      "finding_data": null
-    }
-  },
-  "freshness::express::4.17.1": {
-    "timestamp": 1783166042.0545418,
-    "data": {
-      "details": {
-        "package": "express",
-        "current": "4.17.1",
-        "latest": "5.2.1",
-        "score": 60.0,
-        "outdated": true
-      },
-      "finding_data": {
-        "severity": "low",
-        "library": "express",
-        "current": "4.17.1",
-        "latest": "5.2.1"
+        "latest": "9.0.3",
+        "transitive_path": []
       }
     }
   },
   "freshness::bcrypt::5.0.0": {
-    "timestamp": 1783166042.0787034,
+    "timestamp": 1783182583.8888912,
     "data": {
       "details": {
         "package": "bcrypt",
@@ -513,12 +120,32 @@
         "severity": "low",
         "library": "bcrypt",
         "current": "5.0.0",
-        "latest": "6.0.0"
+        "latest": "6.0.0",
+        "transitive_path": []
+      }
+    }
+  },
+  "freshness::express::4.17.1": {
+    "timestamp": 1783182583.9024346,
+    "data": {
+      "details": {
+        "package": "express",
+        "current": "4.17.1",
+        "latest": "5.2.1",
+        "score": 60.0,
+        "outdated": true
+      },
+      "finding_data": {
+        "severity": "low",
+        "library": "express",
+        "current": "4.17.1",
+        "latest": "5.2.1",
+        "transitive_path": []
       }
     }
   },
   "freshness::axios::0.21.1": {
-    "timestamp": 1783166041.921019,
+    "timestamp": 1783182584.3665464,
     "data": {
       "details": {
         "package": "axios",
@@ -531,12 +158,13 @@
         "severity": "low",
         "library": "axios",
         "current": "0.21.1",
-        "latest": "1.18.1"
+        "latest": "1.18.1",
+        "transitive_path": []
       }
     }
   },
   "freshness::xml-parser::1.2.1": {
-    "timestamp": 1783166042.0921612,
+    "timestamp": 1783182584.9997025,
     "data": {
       "details": {
         "package": "xml-parser",
@@ -549,7 +177,7 @@
     }
   },
   "freshness::mongoose::5.12.0": {
-    "timestamp": 1783166042.7643378,
+    "timestamp": 1783182589.1916335,
     "data": {
       "details": {
         "package": "mongoose",
@@ -562,16 +190,17 @@
         "severity": "medium",
         "library": "mongoose",
         "current": "5.12.0",
-        "latest": "9.7.3"
+        "latest": "9.7.3",
+        "transitive_path": []
       }
     }
   },
   "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\demo_apps\\vulnerable_bank_app": {
     "hash": "8694273445064eeb1fd4b9ad3463f350",
-    "timestamp": "2026-07-04T17:24:39.333257",
+    "timestamp": "2026-07-04T21:59:59.170580",
     "report_data": {
       "scan_path": "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\demo_apps\\vulnerable_bank_app",
-      "timestamp": "2026-07-04T17:24:39.330859",
+      "timestamp": "2026-07-04T21:59:59.168812",
       "findings": [
         {
           "severity": "critical",
@@ -642,26 +271,6 @@
           "parameter": "merge",
           "value": "user_input",
           "fix": "Use lodash.mergeWith with sanitized input or use spread operator"
-        },
-        {
-          "severity": "high",
-          "library": "jsonwebtoken",
-          "file": "package.json",
-          "line": 0,
-          "message": "GHSA-8cf7-32gw-wr33 \u2014 jsonwebtoken@^8.5.1",
-          "parameter": null,
-          "value": null,
-          "fix": "Upgrade jsonwebtoken to latest version"
-        },
-        {
-          "severity": "high",
-          "library": "axios",
-          "file": "package.json",
-          "line": 0,
-          "message": "GHSA-3g43-6gmg-66jw \u2014 axios@^0.21.1",
-          "parameter": null,
-          "value": null,
-          "fix": "Upgrade axios to latest version"
         },
         {
           "severity": "high",
@@ -675,13 +284,13 @@
         },
         {
           "severity": "high",
-          "library": "lodash",
+          "library": "jsonwebtoken",
           "file": "package.json",
           "line": 0,
-          "message": "GHSA-29mw-wpgm-hmr9 \u2014 lodash@^4.17.15",
+          "message": "GHSA-8cf7-32gw-wr33 \u2014 jsonwebtoken@^8.5.1",
           "parameter": null,
           "value": null,
-          "fix": "Upgrade lodash to latest version"
+          "fix": "Upgrade jsonwebtoken to latest version"
         },
         {
           "severity": "critical",
@@ -692,6 +301,26 @@
           "parameter": null,
           "value": null,
           "fix": "Upgrade mongoose to latest version"
+        },
+        {
+          "severity": "high",
+          "library": "lodash",
+          "file": "package.json",
+          "line": 0,
+          "message": "GHSA-29mw-wpgm-hmr9 \u2014 lodash@^4.17.15",
+          "parameter": null,
+          "value": null,
+          "fix": "Upgrade lodash to latest version"
+        },
+        {
+          "severity": "high",
+          "library": "axios",
+          "file": "package.json",
+          "line": 0,
+          "message": "GHSA-3g43-6gmg-66jw \u2014 axios@^0.21.1",
+          "parameter": null,
+          "value": null,
+          "fix": "Upgrade axios to latest version"
         },
         {
           "severity": "medium",
@@ -705,13 +334,13 @@
         },
         {
           "severity": "low",
-          "library": "axios",
+          "library": "jsonwebtoken",
           "file": "package.json",
           "line": 0,
-          "message": "axios is outdated \u2014 current: 0.21.1 latest: 1.18.1",
+          "message": "jsonwebtoken is outdated \u2014 current: 8.5.1 latest: 9.0.3",
           "parameter": null,
           "value": null,
-          "fix": "Upgrade axios to 1.18.1"
+          "fix": "Upgrade jsonwebtoken to 9.0.3"
         },
         {
           "severity": "low",
@@ -722,16 +351,6 @@
           "parameter": null,
           "value": null,
           "fix": "Upgrade bcrypt to 6.0.0"
-        },
-        {
-          "severity": "medium",
-          "library": "mongoose",
-          "file": "package.json",
-          "line": 0,
-          "message": "mongoose is outdated \u2014 current: 5.12.0 latest: 9.7.3",
-          "parameter": null,
-          "value": null,
-          "fix": "Upgrade mongoose to 9.7.3"
         },
         {
           "severity": "low",
@@ -745,13 +364,23 @@
         },
         {
           "severity": "low",
-          "library": "jsonwebtoken",
+          "library": "axios",
           "file": "package.json",
           "line": 0,
-          "message": "jsonwebtoken is outdated \u2014 current: 8.5.1 latest: 9.0.3",
+          "message": "axios is outdated \u2014 current: 0.21.1 latest: 1.18.1",
           "parameter": null,
           "value": null,
-          "fix": "Upgrade jsonwebtoken to 9.0.3"
+          "fix": "Upgrade axios to 1.18.1"
+        },
+        {
+          "severity": "medium",
+          "library": "mongoose",
+          "file": "package.json",
+          "line": 0,
+          "message": "mongoose is outdated \u2014 current: 5.12.0 latest: 9.7.3",
+          "parameter": null,
+          "value": null,
+          "fix": "Upgrade mongoose to 9.7.3"
         },
         {
           "severity": "high",
@@ -837,142 +466,6 @@
         "phantom_score": 95,
         "total": 64.2,
         "zone": "WARNING"
-      }
-    }
-  },
-  "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\test_docker.py": {
-    "hash": "d41d8cd98f00b204e9800998ecf8427e",
-    "timestamp": "2026-07-04T17:31:52.626423",
-    "report_data": {
-      "scan_path": "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\test_docker.py",
-      "timestamp": "2026-07-04T17:31:52.624399",
-      "findings": [],
-      "dependencies": [],
-      "score": {
-        "config_score": 100.0,
-        "cve_score": 100.0,
-        "trust_score": 100.0,
-        "freshness_score": 100.0,
-        "phantom_score": 100,
-        "total": 100.0,
-        "zone": "SAFE"
-      }
-    }
-  },
-  "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\test_docker_cve.py": {
-    "hash": "d41d8cd98f00b204e9800998ecf8427e",
-    "timestamp": "2026-07-04T17:32:02.731721",
-    "report_data": {
-      "scan_path": "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\test_docker_cve.py",
-      "timestamp": "2026-07-04T17:32:02.729955",
-      "findings": [],
-      "dependencies": [],
-      "score": {
-        "config_score": 100.0,
-        "cve_score": 100.0,
-        "trust_score": 100.0,
-        "freshness_score": 100.0,
-        "phantom_score": 100,
-        "total": 100.0,
-        "zone": "SAFE"
-      }
-    }
-  },
-  "C:\\home\\claude\\docker_verify": {
-    "hash": "d41d8cd98f00b204e9800998ecf8427e",
-    "timestamp": "2026-07-04T17:41:23.787786",
-    "report_data": {
-      "scan_path": "C:\\home\\claude\\docker_verify",
-      "timestamp": "2026-07-04T17:41:23.785943",
-      "findings": [],
-      "dependencies": [],
-      "score": {
-        "config_score": 100.0,
-        "cve_score": 100.0,
-        "trust_score": 100.0,
-        "freshness_score": 100.0,
-        "phantom_score": 100,
-        "total": 100.0,
-        "zone": "SAFE"
-      }
-    }
-  },
-  "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\path\\to\\Dockerfile": {
-    "hash": "d41d8cd98f00b204e9800998ecf8427e",
-    "timestamp": "2026-07-04T17:41:37.055172",
-    "report_data": {
-      "scan_path": "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\path\\to\\Dockerfile",
-      "timestamp": "2026-07-04T17:41:37.054152",
-      "findings": [],
-      "dependencies": [],
-      "score": {
-        "config_score": 100.0,
-        "cve_score": 100.0,
-        "trust_score": 100.0,
-        "freshness_score": 100.0,
-        "phantom_score": 100,
-        "total": 100.0,
-        "zone": "SAFE"
-      }
-    }
-  },
-  "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\docker_verify": {
-    "hash": "d41d8cd98f00b204e9800998ecf8427e",
-    "timestamp": "2026-07-04T18:14:31.991117",
-    "report_data": {
-      "scan_path": "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\docker_verify",
-      "timestamp": "2026-07-04T18:14:31.989399",
-      "findings": [
-        {
-          "severity": "critical",
-          "library": "dockerfile",
-          "file": "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\docker_verify\\Dockerfile",
-          "line": 3,
-          "message": "Possible secret baked into the image via ENV (matched 'password') \u2014 this persists in the image layer history even if unset later.",
-          "parameter": null,
-          "value": null,
-          "fix": "Pass secrets at runtime (e.g. Docker secrets, environment injection at deploy time) instead of baking them into the image."
-        },
-        {
-          "severity": "high",
-          "library": "dockerfile",
-          "file": "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\docker_verify\\Dockerfile",
-          "line": 9,
-          "message": "No USER instruction found \u2014 container will run as root by default.",
-          "parameter": null,
-          "value": null,
-          "fix": "Add a non-root USER instruction before the final CMD/ENTRYPOINT."
-        },
-        {
-          "severity": "low",
-          "library": "dockerfile",
-          "file": "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\docker_verify\\Dockerfile",
-          "line": 9,
-          "message": "No HEALTHCHECK instruction \u2014 orchestrators can't detect an unhealthy-but-running container.",
-          "parameter": null,
-          "value": null,
-          "fix": "Add a HEALTHCHECK instruction appropriate to the service."
-        },
-        {
-          "severity": "high",
-          "library": "docker-base-image",
-          "file": "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\docker_verify\\Dockerfile",
-          "line": 1,
-          "message": "Base image node:14.17.0-alpine runs a node 14 runtime, which reached end-of-life on 2023-04-30 and no longer receives security patches.",
-          "parameter": null,
-          "value": null,
-          "fix": "Upgrade to a currently-supported node version."
-        }
-      ],
-      "dependencies": [],
-      "score": {
-        "config_score": 73,
-        "cve_score": 95.0,
-        "trust_score": 100.0,
-        "freshness_score": 100.0,
-        "phantom_score": 100,
-        "total": 90.7,
-        "zone": "SAFE"
       }
     }
   }

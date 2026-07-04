@@ -9,7 +9,7 @@ class ConfigScorer:
             "axios",
             "mongoose",
             "express",
-            "lodash",
+            "lodash","requests"
         ]
 
         config_findings = [
@@ -24,12 +24,12 @@ class ConfigScorer:
         penalty = 0
         for f in config_findings:
             if f.severity == "critical":
-                penalty += 25
-            elif f.severity == "high":
                 penalty += 15
+            elif f.severity == "high":
+                penalty += 10
             elif f.severity == "medium":
-                penalty += 8
+                penalty += 5
             elif f.severity == "low":
-                penalty += 3
+                penalty += 2
 
         return round(max(0, 100 - penalty), 1)

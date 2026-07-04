@@ -1,0 +1,9 @@
+{
+    "library": "hashlib",
+    "patterns": {
+        "md5": {
+            "severity": "critical",
+            "message": "MD5 hashing detected -- cryptographically broken."
+        }
+    }
+}

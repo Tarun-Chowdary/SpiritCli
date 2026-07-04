@@ -637,6 +637,7 @@ class Engine:
         config_libraries = [
             "bcrypt", "jwt", "jsonwebtoken",
             "axios", "mongoose", "express", "lodash", "requests","dockerfile",
+            "hashlib", "flask-cors",
         ]
 
         config_findings = [

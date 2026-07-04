@@ -10,6 +10,8 @@ class ConfigScorer:
             "mongoose",
             "express",
             "lodash",
+            "hashlib",
+            "flask-cors",
         ]
 
         config_findings = [

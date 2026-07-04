@@ -460,7 +460,7 @@ def fix(path):
 
     fixable = [
         f for f in report.findings
-        if f.library in ["bcrypt", "jwt", "axios", "mongoose", "express", "lodash"]
+        if f.library in ["bcrypt", "jwt", "axios", "mongoose", "express", "lodash", "requests", "dockerfile"]
         and f.file != "package.json"
         and os.path.exists(f.file)
     ]

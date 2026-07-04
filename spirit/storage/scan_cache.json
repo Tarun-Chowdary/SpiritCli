@@ -338,10 +338,10 @@
   },
   "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\testpython.py": {
     "hash": "d41d8cd98f00b204e9800998ecf8427e",
-    "timestamp": "2026-07-03T23:19:11.352954",
+    "timestamp": "2026-07-04T17:23:28.774367",
     "report_data": {
       "scan_path": "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\testpython.py",
-      "timestamp": "2026-07-03T23:19:11.350199",
+      "timestamp": "2026-07-04T17:23:28.772747",
       "findings": [
         {
           "severity": "critical",
@@ -451,7 +451,7 @@
     }
   },
   "freshness::jsonwebtoken::8.5.1": {
-    "timestamp": 1783099100.9355545,
+    "timestamp": 1783166072.4527874,
     "data": {
       "details": {
         "package": "jsonwebtoken",
@@ -469,7 +469,7 @@
     }
   },
   "freshness::lodash::4.17.15": {
-    "timestamp": 1783099100.9856758,
+    "timestamp": 1783166041.8532834,
     "data": {
       "details": {
         "package": "lodash",
@@ -482,7 +482,7 @@
     }
   },
   "freshness::express::4.17.1": {
-    "timestamp": 1783099101.1646411,
+    "timestamp": 1783166042.0545418,
     "data": {
       "details": {
         "package": "express",
@@ -500,7 +500,7 @@
     }
   },
   "freshness::bcrypt::5.0.0": {
-    "timestamp": 1783099101.1724331,
+    "timestamp": 1783166042.0787034,
     "data": {
       "details": {
         "package": "bcrypt",
@@ -518,7 +518,7 @@
     }
   },
   "freshness::axios::0.21.1": {
-    "timestamp": 1783099101.2003906,
+    "timestamp": 1783166041.921019,
     "data": {
       "details": {
         "package": "axios",
@@ -536,7 +536,7 @@
     }
   },
   "freshness::xml-parser::1.2.1": {
-    "timestamp": 1783099101.2357833,
+    "timestamp": 1783166042.0921612,
     "data": {
       "details": {
         "package": "xml-parser",
@@ -549,7 +549,7 @@
     }
   },
   "freshness::mongoose::5.12.0": {
-    "timestamp": 1783099101.5723567,
+    "timestamp": 1783166042.7643378,
     "data": {
       "details": {
         "package": "mongoose",
@@ -568,10 +568,10 @@
   },
   "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\demo_apps\\vulnerable_bank_app": {
     "hash": "8694273445064eeb1fd4b9ad3463f350",
-    "timestamp": "2026-07-03T23:15:46.123795",
+    "timestamp": "2026-07-04T17:24:39.333257",
     "report_data": {
       "scan_path": "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\demo_apps\\vulnerable_bank_app",
-      "timestamp": "2026-07-03T23:15:46.119152",
+      "timestamp": "2026-07-04T17:24:39.330859",
       "findings": [
         {
           "severity": "critical",
@@ -645,13 +645,13 @@
         },
         {
           "severity": "high",
-          "library": "express",
+          "library": "jsonwebtoken",
           "file": "package.json",
           "line": 0,
-          "message": "GHSA-qw6h-vgh9-j6wx \u2014 express@^4.17.1",
+          "message": "GHSA-8cf7-32gw-wr33 \u2014 jsonwebtoken@^8.5.1",
           "parameter": null,
           "value": null,
-          "fix": "Upgrade express to latest version"
+          "fix": "Upgrade jsonwebtoken to latest version"
         },
         {
           "severity": "high",
@@ -665,13 +665,13 @@
         },
         {
           "severity": "high",
-          "library": "jsonwebtoken",
+          "library": "express",
           "file": "package.json",
           "line": 0,
-          "message": "GHSA-8cf7-32gw-wr33 \u2014 jsonwebtoken@^8.5.1",
+          "message": "GHSA-qw6h-vgh9-j6wx \u2014 express@^4.17.1",
           "parameter": null,
           "value": null,
-          "fix": "Upgrade jsonwebtoken to latest version"
+          "fix": "Upgrade express to latest version"
         },
         {
           "severity": "high",
@@ -705,13 +705,13 @@
         },
         {
           "severity": "low",
-          "library": "jsonwebtoken",
+          "library": "axios",
           "file": "package.json",
           "line": 0,
-          "message": "jsonwebtoken is outdated \u2014 current: 8.5.1 latest: 9.0.3",
+          "message": "axios is outdated \u2014 current: 0.21.1 latest: 1.18.1",
           "parameter": null,
           "value": null,
-          "fix": "Upgrade jsonwebtoken to 9.0.3"
+          "fix": "Upgrade axios to 1.18.1"
         },
         {
           "severity": "low",
@@ -724,14 +724,14 @@
           "fix": "Upgrade bcrypt to 6.0.0"
         },
         {
-          "severity": "low",
-          "library": "axios",
+          "severity": "medium",
+          "library": "mongoose",
           "file": "package.json",
           "line": 0,
-          "message": "axios is outdated \u2014 current: 0.21.1 latest: 1.18.1",
+          "message": "mongoose is outdated \u2014 current: 5.12.0 latest: 9.7.3",
           "parameter": null,
           "value": null,
-          "fix": "Upgrade axios to 1.18.1"
+          "fix": "Upgrade mongoose to 9.7.3"
         },
         {
           "severity": "low",
@@ -744,14 +744,14 @@
           "fix": "Upgrade express to 5.2.1"
         },
         {
-          "severity": "medium",
-          "library": "mongoose",
+          "severity": "low",
+          "library": "jsonwebtoken",
           "file": "package.json",
           "line": 0,
-          "message": "mongoose is outdated \u2014 current: 5.12.0 latest: 9.7.3",
+          "message": "jsonwebtoken is outdated \u2014 current: 8.5.1 latest: 9.0.3",
           "parameter": null,
           "value": null,
-          "fix": "Upgrade mongoose to 9.7.3"
+          "fix": "Upgrade jsonwebtoken to 9.0.3"
         },
         {
           "severity": "high",
@@ -831,12 +831,148 @@
       ],
       "score": {
         "config_score": 30,
-        "cve_score": 73.0,
+        "cve_score": 86.5,
         "trust_score": 72.3,
         "freshness_score": 64.3,
         "phantom_score": 95,
-        "total": 60.9,
+        "total": 64.2,
         "zone": "WARNING"
+      }
+    }
+  },
+  "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\test_docker.py": {
+    "hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "timestamp": "2026-07-04T17:31:52.626423",
+    "report_data": {
+      "scan_path": "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\test_docker.py",
+      "timestamp": "2026-07-04T17:31:52.624399",
+      "findings": [],
+      "dependencies": [],
+      "score": {
+        "config_score": 100.0,
+        "cve_score": 100.0,
+        "trust_score": 100.0,
+        "freshness_score": 100.0,
+        "phantom_score": 100,
+        "total": 100.0,
+        "zone": "SAFE"
+      }
+    }
+  },
+  "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\test_docker_cve.py": {
+    "hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "timestamp": "2026-07-04T17:32:02.731721",
+    "report_data": {
+      "scan_path": "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\test_docker_cve.py",
+      "timestamp": "2026-07-04T17:32:02.729955",
+      "findings": [],
+      "dependencies": [],
+      "score": {
+        "config_score": 100.0,
+        "cve_score": 100.0,
+        "trust_score": 100.0,
+        "freshness_score": 100.0,
+        "phantom_score": 100,
+        "total": 100.0,
+        "zone": "SAFE"
+      }
+    }
+  },
+  "C:\\home\\claude\\docker_verify": {
+    "hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "timestamp": "2026-07-04T17:41:23.787786",
+    "report_data": {
+      "scan_path": "C:\\home\\claude\\docker_verify",
+      "timestamp": "2026-07-04T17:41:23.785943",
+      "findings": [],
+      "dependencies": [],
+      "score": {
+        "config_score": 100.0,
+        "cve_score": 100.0,
+        "trust_score": 100.0,
+        "freshness_score": 100.0,
+        "phantom_score": 100,
+        "total": 100.0,
+        "zone": "SAFE"
+      }
+    }
+  },
+  "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\path\\to\\Dockerfile": {
+    "hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "timestamp": "2026-07-04T17:41:37.055172",
+    "report_data": {
+      "scan_path": "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\path\\to\\Dockerfile",
+      "timestamp": "2026-07-04T17:41:37.054152",
+      "findings": [],
+      "dependencies": [],
+      "score": {
+        "config_score": 100.0,
+        "cve_score": 100.0,
+        "trust_score": 100.0,
+        "freshness_score": 100.0,
+        "phantom_score": 100,
+        "total": 100.0,
+        "zone": "SAFE"
+      }
+    }
+  },
+  "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\docker_verify": {
+    "hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "timestamp": "2026-07-04T18:14:31.991117",
+    "report_data": {
+      "scan_path": "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\docker_verify",
+      "timestamp": "2026-07-04T18:14:31.989399",
+      "findings": [
+        {
+          "severity": "critical",
+          "library": "dockerfile",
+          "file": "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\docker_verify\\Dockerfile",
+          "line": 3,
+          "message": "Possible secret baked into the image via ENV (matched 'password') \u2014 this persists in the image layer history even if unset later.",
+          "parameter": null,
+          "value": null,
+          "fix": "Pass secrets at runtime (e.g. Docker secrets, environment injection at deploy time) instead of baking them into the image."
+        },
+        {
+          "severity": "high",
+          "library": "dockerfile",
+          "file": "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\docker_verify\\Dockerfile",
+          "line": 9,
+          "message": "No USER instruction found \u2014 container will run as root by default.",
+          "parameter": null,
+          "value": null,
+          "fix": "Add a non-root USER instruction before the final CMD/ENTRYPOINT."
+        },
+        {
+          "severity": "low",
+          "library": "dockerfile",
+          "file": "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\docker_verify\\Dockerfile",
+          "line": 9,
+          "message": "No HEALTHCHECK instruction \u2014 orchestrators can't detect an unhealthy-but-running container.",
+          "parameter": null,
+          "value": null,
+          "fix": "Add a HEALTHCHECK instruction appropriate to the service."
+        },
+        {
+          "severity": "high",
+          "library": "docker-base-image",
+          "file": "C:\\Users\\yegi2\\OneDrive\\Desktop\\SpiritCLI\\SpiritCli\\docker_verify\\Dockerfile",
+          "line": 1,
+          "message": "Base image node:14.17.0-alpine runs a node 14 runtime, which reached end-of-life on 2023-04-30 and no longer receives security patches.",
+          "parameter": null,
+          "value": null,
+          "fix": "Upgrade to a currently-supported node version."
+        }
+      ],
+      "dependencies": [],
+      "score": {
+        "config_score": 73,
+        "cve_score": 95.0,
+        "trust_score": 100.0,
+        "freshness_score": 100.0,
+        "phantom_score": 100,
+        "total": 90.7,
+        "zone": "SAFE"
       }
     }
   }

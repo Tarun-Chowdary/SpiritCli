@@ -280,7 +280,11 @@ def scan(path, fresh):
         "[cyan]Scanning dependencies and configurations...[/cyan]", spinner="dots"
     ):
         report = run_scan_cached(path, force=fresh)
-    console.print(f"[dim]Scanned {len(report.dependencies)} dependencies[/dim]")
+    direct_count = sum(1 for d in report.dependencies if d.is_direct)
+    transitive_count = sum(1 for d in report.dependencies if not d.is_direct)
+    console.print(
+        f"[dim]Scanned {direct_count} direct, {transitive_count} transitive dependencies[/dim]"
+    )
     console.print()
     display_score(report.score)
     display_findings(report.findings)

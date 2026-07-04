@@ -32,7 +32,7 @@ class Engine:
 
         # Step 3 - config analysis
         self.findings = self._run_analysis(files)
-
+        self.findings.extend(self._check_docker_hygiene())
         # Step 4 - CVE check (parallel)
         try:
             cve_score, cve_findings = self._check_cves()
@@ -40,6 +40,17 @@ class Engine:
         except Exception as e:
             console.print(f"[yellow]CVE check failed: {e}[/yellow]")
             cve_score = 100.0
+            
+        try:
+            docker_cve_score, docker_cve_findings = self._check_docker_cve()
+            self.findings.extend(docker_cve_findings)
+
+            # Equal-weight average with dependency CVE score. Documented choice:
+            # OS-layer CVEs matter as much as dependency CVEs, not less.
+            cve_score = round((cve_score + docker_cve_score) / 2, 1)
+
+        except Exception as e:
+            console.print(f"[yellow]Docker CVE check failed: {e}[/yellow]")
 
         # Step 5 - phantom check
         try:
@@ -188,7 +199,8 @@ class Engine:
 
         # If the target is a single file
         if os.path.isfile(self.path):
-            if self.path.endswith(extensions):
+            basename = os.path.basename(self.path)
+            if self.path.endswith(extensions) or basename == "Dockerfile" or basename.startswith("Dockerfile."):
                 collected.append(self.path)
             return collected
 
@@ -198,15 +210,15 @@ class Engine:
                 d for d in dirs
                 if d not in ["node_modules", "venv", ".git", "__pycache__"]
             ]
-
             for file in files:
-                if file.endswith(extensions):
+                if file.endswith(extensions) or file == "Dockerfile" or file.startswith("Dockerfile."):
                     collected.append(os.path.join(root, file))
 
         return collected
 
     def _collect_dependencies(self):
         deps = []
+        direct_names = set()
 
         pkg_path = os.path.join(self.path, "package.json")
         if os.path.exists(pkg_path):
@@ -215,10 +227,26 @@ class Engine:
                     pkg = json.load(f)
                 for name, version in pkg.get("dependencies", {}).items():
                     deps.append(Dependency(name=name, version=version))
+                    direct_names.add(name)
                 for name, version in pkg.get("devDependencies", {}).items():
                     deps.append(
                         Dependency(name=name, version=version, is_dev=True)
                     )
+                    direct_names.add(name)
+            except Exception:
+                pass
+
+        # ── Transitive dependencies (package-lock.json) ──────────────────
+        # Packages pulled in automatically by a direct dependency, but never
+        # declared in package.json themselves. Invisible to CVE checking
+        # otherwise, despite being real installed code.
+        lock_path = os.path.join(self.path, "package-lock.json")
+        if os.path.exists(lock_path):
+            try:
+                from integrations.lockfile import parse_transitive_dependencies
+                transitive = parse_transitive_dependencies(lock_path, direct_names)
+                for name, version in transitive:
+                    deps.append(Dependency(name=name, version=version, is_direct=False))
             except Exception:
                 pass
 
@@ -380,7 +408,85 @@ class Engine:
 
         final_cve_score = round(sum(scores) / len(scores), 1) if scores else 100.0
         return final_cve_score, cve_findings
+    
+    # ── DOCKER CVE CHECK ─────────────────────────────────────
 
+    def _check_docker_cve(self):
+        """Base-image / pinned-package CVEs. Feeds cve_score."""
+        from integrations.docker_cve import extract_docker_cve
+
+        findings = []
+        for filepath in self._collect_files():
+            if not os.path.basename(filepath).startswith("Dockerfile"):
+                continue
+            try:
+                with open(filepath, "r", encoding="utf-8") as f:
+                    contents = f.read()
+                raw = extract_docker_cve(filepath, contents)
+                for r in raw:
+                    findings.append(Finding(
+                        severity=r["severity"].lower(),
+                        library=r.get("cve_id") or "docker-base-image",
+                        file=r["file"],
+                        line=r["line"],
+                        message=r["message"],
+                        fix=r["fix"],
+                    ))
+            except Exception:
+                pass
+
+        docker_cve_score = self._score_from_findings(findings)
+        return docker_cve_score, findings
+
+    # ── DOCKER HYGIENE CHECK ─────────────────────────────────
+
+    def _check_docker_hygiene(self):
+        """Dockerfile hygiene (root user, :latest, secrets in ENV, etc).
+        Feeds config_score — same bucket as bcrypt/jwt/axios/mongoose/express/lodash."""
+        from integrations.docker import extract_docker_config
+
+        findings = []
+        for filepath in self._collect_files():
+            if not os.path.basename(filepath).startswith("Dockerfile"):
+                continue
+            try:
+                with open(filepath, "r", encoding="utf-8") as f:
+                    contents = f.read()
+                raw = extract_docker_config(filepath, contents)
+                for r in raw:
+                    findings.append(Finding(
+                        severity=r["severity"],
+                        library="dockerfile",
+                        file=r["file"],
+                        line=r["line"],
+                        message=r["message"],
+                        fix=r["fix"],
+                    ))
+            except Exception:
+                pass
+
+        return findings
+
+    # ── SHARED PENALTY SCORER (used by docker cve check) ────
+
+    def _score_from_findings(self, findings):
+        """Same penalty curve as _get_config_score, reused so docker cve
+        findings can be averaged into cve_score on a comparable scale."""
+        if not findings:
+            return 100.0
+        penalty = 0
+        for f in findings:
+            if f.severity == "critical":
+                penalty += 15
+            elif f.severity == "high":
+                penalty += 10
+            elif f.severity == "medium":
+                penalty += 5
+            elif f.severity == "low":
+                penalty += 2
+        penalty = min(penalty, 70)
+        return round(max(0, 100 - penalty), 1) 
+    
     # ── PHANTOM CHECK ────────────────────────────────────────
 
     def _check_phantom(self):
@@ -530,7 +636,7 @@ class Engine:
 
         config_libraries = [
             "bcrypt", "jwt", "jsonwebtoken",
-            "axios", "mongoose", "express", "lodash", "requests",
+            "axios", "mongoose", "express", "lodash", "requests","dockerfile",
         ]
 
         config_findings = [

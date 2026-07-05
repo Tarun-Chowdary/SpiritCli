@@ -212,6 +212,10 @@ def get_fix_rules():
         ],
     }
 
+def export_sbom_report(self, output_path="sbom.json"):
+    from reporting.sbom_exporter import export_sbom
+    project_name = os.path.basename(os.path.abspath(self.path))
+    return export_sbom(self.dependencies, output_path, project_name=project_name)
 
 @click.group()
 def cli():
@@ -938,6 +942,17 @@ def audit(path, show_all):
     if force > 0:
         console.print(f"\n[red]⚠ {force} force push(es) detected — security was bypassed[/red]")
 
+@cli.command()
+@click.argument("path", default=".")
+@click.option("--output", default="sbom.json", help="Output file path")
+def sbom(path, output):
+    """Generate a CycloneDX SBOM (Software Bill of Materials)"""
+    print_banner()
+    with console.status("[cyan]Collecting dependencies...[/cyan]", spinner="dots"):
+        engine = Engine(path)
+        engine.dependencies = engine._collect_dependencies()   # <-- must run first
+        result_path = engine.export_sbom_report(output)
+    console.print(f"[green]✓ SBOM written to {result_path}[/green]")
 
 @cli.command("install-hooks")
 @click.argument("path", default=".")

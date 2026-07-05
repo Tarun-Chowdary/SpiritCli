@@ -34,6 +34,8 @@ class Engine:
         # Step 3 - config analysis
         self.findings = self._run_analysis(files)
         self.findings.extend(self._check_docker_hygiene())
+        self.findings.extend(self._check_secrets())   
+
         # Step 4 - CVE check (parallel)
         try:
             cve_score, cve_findings = self._check_cves()
@@ -540,7 +542,38 @@ class Engine:
             ))
 
         return phantom_score, phantom_findings
+    # ── SECRETS SCAN ─────────────────────────────────────────
 
+    def _check_secrets(self):
+        """Hardcoded credentials in source files (API keys, passwords,
+        private keys, DB connection strings). Feeds config_score."""
+        from integrations.secrets_scanner import scan_source
+
+        findings = []
+        for filepath in self._collect_files():
+            try:
+                with open(filepath, "r", encoding="utf-8") as f:
+                    contents = f.read()
+                raw = scan_source(filepath, contents)
+                for r in raw:
+                    findings.append(Finding(
+                        severity=r["severity"],
+                        library="secrets",
+                        file=r["file"],
+                        line=r["line"],
+                        message=r["message"],
+                        fix=r["fix"],
+                    ))
+            except Exception:
+                pass
+
+        return findings
+    
+    def export_sbom_report(self, output_path="sbom.json"):
+        """Generate a CycloneDX SBOM from currently-collected dependencies."""
+        from reporting.sbom_exporter import export_sbom
+        project_name = os.path.basename(os.path.abspath(self.path))
+        return export_sbom(self.dependencies, output_path, project_name=project_name)
     # ── FRESHNESS CHECK — PARALLEL ───────────────────────────
 
     def _check_freshness(self):
@@ -674,7 +707,7 @@ class Engine:
 
         config_libraries = [
             "bcrypt", "jwt", "jsonwebtoken",
-            "axios", "mongoose", "express", "lodash", "requests","dockerfile",
+            "axios", "mongoose", "express", "lodash", "requests","dockerfile", "secrets",
         ]
 
         config_findings = [

@@ -3,3 +3,6 @@ venv
 __pycache__/
 *.pyc
 .pytest_cache
+spirit/storage/scan_cache.json
+spirit/storage/scans.db
+*.egg-info/

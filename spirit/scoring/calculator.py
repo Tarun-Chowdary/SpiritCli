@@ -34,7 +34,7 @@ class Calculator:
     def _get_zone(self, total):
         if total >= 71:
             return "SAFE"
-        elif total >= 36:
+        elif total >= 40:
             return "WARNING"
         else:
             return "QUARANTINE"

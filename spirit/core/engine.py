@@ -8,6 +8,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from rich.console import Console
 
 from models import Finding, Dependency, Score, Report
+from storage.database import save_vulnerabilities
 
 console = Console()
 
@@ -239,14 +240,28 @@ class Engine:
         # ── Transitive dependencies (package-lock.json) ──────────────────
         # Packages pulled in automatically by a direct dependency, but never
         # declared in package.json themselves. Invisible to CVE checking
-        # otherwise, despite being real installed code.
+        # otherwise, despite being real installed code. transitive_path
+        # records the shortest chain from a direct dependency down to this
+        # package (e.g. ["express", "qs"]) so findings can show *why* a
+        # transitive package is installed, not just that it is.
         lock_path = os.path.join(self.path, "package-lock.json")
         if os.path.exists(lock_path):
             try:
-                from integrations.lockfile import parse_transitive_dependencies
+                from integrations.lockfile import (
+                    parse_transitive_dependencies,
+                    build_dependency_graph,
+                    find_dependency_chain,
+                )
                 transitive = parse_transitive_dependencies(lock_path, direct_names)
+                graph, root_deps = build_dependency_graph(lock_path)
                 for name, version in transitive:
-                    deps.append(Dependency(name=name, version=version, is_direct=False))
+                    chain = find_dependency_chain(graph, root_deps, name)
+                    deps.append(Dependency(
+                        name=name,
+                        version=version,
+                        is_direct=False,
+                        transitive_path=chain,
+                    ))
             except Exception:
                 pass
 
@@ -274,7 +289,7 @@ class Engine:
 
         return deps
 
- # ── CONFIG ANALYSIS ─────────────────────────────────────
+    # ── CONFIG ANALYSIS ─────────────────────────────────────
 
     def _run_analysis(self, files):
         findings = []
@@ -339,12 +354,10 @@ class Engine:
             try:
                 clean_version = dep.version.lstrip("^~")
 
-                # check CVE cache first — skip API call if cached
                 cached = get_cached_cve(dep.name, clean_version)
                 if cached:
                     return cached["score"], cached["findings_data"]
 
-                # not cached — query OSV API
                 result = client.query(dep.name, clean_version, "npm")
                 summary = client.get_cve_summary(result)
                 dep_score = scorer.compute(summary)
@@ -371,9 +384,9 @@ class Engine:
                             "library": dep.name,
                             "version": dep.version,
                             "cve_id": cve_id,
+                            "transitive_path": dep.transitive_path,
                         })
 
-                # save to CVE cache
                 save_cached_cve(dep.name, clean_version, {
                     "score": dep_score,
                     "findings_data": findings_data,
@@ -395,12 +408,19 @@ class Engine:
                     dep_score, findings_data = future.result()
                     scores.append(dep_score)
                     for fd in findings_data:
+                        chain = fd.get("transitive_path") or []
+                        if len(chain) > 1:
+                            via = " → ".join(chain[:-1])
+                            message = f"{fd['cve_id']} — {fd['library']}@{fd['version']} (pulled in via {via})"
+                        else:
+                            message = f"{fd['cve_id']} — {fd['library']}@{fd['version']}"
+
                         cve_findings.append(Finding(
                             severity=fd["severity"],
                             library=fd["library"],
                             file="package.json",
                             line=0,
-                            message=f"{fd['cve_id']} — {fd['library']}@{fd['version']}",
+                            message=message,
                             fix=f"Upgrade {fd['library']} to latest version",
                         ))
                 except Exception:
@@ -470,20 +490,22 @@ class Engine:
     # ── SHARED PENALTY SCORER (used by docker cve check) ────
 
     def _score_from_findings(self, findings):
-        """Same penalty curve as _get_config_score, reused so docker cve
-        findings can be averaged into cve_score on a comparable scale."""
+        """Penalty curve for docker cve findings, intentionally lighter than
+        _get_config_score's curve — averaged 50/50 with dependency CVE score,
+        a single Dockerfile finding shouldn't swing cve_score as hard as the
+        original 15/10/5/2 curve would."""
         if not findings:
             return 100.0
         penalty = 0
         for f in findings:
             if f.severity == "critical":
-                penalty += 15
-            elif f.severity == "high":
                 penalty += 10
-            elif f.severity == "medium":
+            elif f.severity == "high":
                 penalty += 5
+            elif f.severity == "medium":
+                penalty += 3
             elif f.severity == "low":
-                penalty += 2
+                penalty += 1
         penalty = min(penalty, 70)
         return round(max(0, 100 - penalty), 1) 
     
@@ -551,6 +573,7 @@ class Engine:
                         "library": dep.name,
                         "current": details["current"],
                         "latest": details["latest"],
+                        "transitive_path": dep.transitive_path,
                     }
 
                 # save to freshness cache
@@ -575,6 +598,11 @@ class Engine:
                     details, finding_data = future.result()
                     details_list.append(details)
                     if finding_data:
+                        chain = finding_data.get("transitive_path") or []
+                        via_suffix = (
+                            f" (pulled in via {' → '.join(chain[:-1])})"
+                            if len(chain) > 1 else ""
+                        )
                         freshness_findings.append(Finding(
                             severity=finding_data["severity"],
                             library=finding_data["library"],
@@ -583,7 +611,7 @@ class Engine:
                             message=(
                                 f"{finding_data['library']} is outdated — "
                                 f"current: {finding_data['current']} "
-                                f"latest: {finding_data['latest']}"
+                                f"latest: {finding_data['latest']}{via_suffix}"
                             ),
                             fix=f"Upgrade {finding_data['library']} to {finding_data['latest']}",
                         ))
@@ -603,6 +631,11 @@ class Engine:
         trust_score = engine.compute_aggregate_score(analyses)
         trust_findings = []
 
+        # lookup so transitive packages can show "(pulled in via ...)" —
+        # analyses are plain dicts keyed by package name, not Dependency
+        # objects, so we need this side table to get back to transitive_path
+        path_by_name = {d.name: d.transitive_path for d in self.dependencies}
+
         for analysis in analyses:
             try:
                 if analysis["risk_level"] in ["critical", "high"]:
@@ -611,13 +644,18 @@ class Engine:
                         if analysis["risk_level"] == "critical"
                         else "high"
                     )
+                    chain = path_by_name.get(analysis["package"]) or []
+                    via_suffix = (
+                        f" (pulled in via {' → '.join(chain[:-1])})"
+                        if len(chain) > 1 else ""
+                    )
                     for signal in analysis["signals"][:1]:
                         trust_findings.append(Finding(
                             severity=severity,
                             library=analysis["package"],
                             file="package.json",
                             line=0,
-                            message=f"[Trust] {signal}",
+                            message=f"[Trust] {signal}{via_suffix}",
                             fix=(
                                 f"Review {analysis['package']} — "
                                 f"trust score: {analysis['trust_score']}/100"

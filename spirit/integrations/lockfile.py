@@ -19,6 +19,101 @@ itself is a nice-to-have for a later pass, not needed for scoring.
 """
 
 import json
+from collections import deque
+
+
+def build_dependency_graph(lockfile_path):
+    """
+    Build a directed graph of "who requires whom" from package-lock.json.
+    Returns (graph, root_deps) where:
+      - graph: {package_name: set(package_names it directly requires)}
+      - root_deps: set of package names required directly by the project
+                   (i.e. package.json's own dependencies, as recorded in
+                   the lockfile's root entry)
+
+    Returns ({}, set()) on any parse failure — callers should treat a
+    missing graph as "chain unknown", not crash.
+    """
+    try:
+        with open(lockfile_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return {}, set()
+
+    lockfile_version = data.get("lockfileVersion", 1)
+
+    if lockfile_version >= 2 and "packages" in data:
+        return _build_graph_v2_v3(data)
+    elif "dependencies" in data:
+        return _build_graph_v1(data)
+    return {}, set()
+
+
+def _build_graph_v2_v3(data):
+    graph = {}
+    root_deps = set()
+    packages = data.get("packages", {})
+
+    root_entry = packages.get("", {})
+    root_deps.update(root_entry.get("dependencies", {}).keys())
+    root_deps.update(root_entry.get("devDependencies", {}).keys())
+
+    for pkg_path, meta in packages.items():
+        if pkg_path == "":
+            continue
+        if "node_modules/" not in pkg_path:
+            continue
+        name = pkg_path.rsplit("node_modules/", 1)[-1]
+        required = set(meta.get("dependencies", {}).keys())
+        graph.setdefault(name, set()).update(required)
+
+    return graph, root_deps
+
+
+def _build_graph_v1(data):
+    graph = {}
+    root_deps = set(data.get("dependencies", {}).keys())
+
+    def walk(deps_dict):
+        for name, meta in deps_dict.items():
+            required = set(meta.get("requires", {}).keys())
+            graph.setdefault(name, set()).update(required)
+            nested = meta.get("dependencies")
+            if nested:
+                walk(nested)
+
+    walk(data.get("dependencies", {}))
+    return graph, root_deps
+
+
+def find_dependency_chain(graph, root_deps, target_package):
+    """
+    BFS from the set of direct/root dependencies down to target_package.
+    Returns the shortest chain as a list, e.g. ["express", "body-parser", "qs"]
+    (target_package itself included as the last element), or [] if
+    target_package is unreachable from any root dependency (or is itself
+    a root dependency, or the graph is empty/malformed).
+    """
+    if not graph or target_package in root_deps:
+        return []
+
+    visited = set(root_deps)
+    queue = deque()
+    for root in root_deps:
+        queue.append([root])
+        visited.add(root)
+
+    while queue:
+        path = queue.popleft()
+        current = path[-1]
+        for child in graph.get(current, ()):
+            if child == target_package:
+                return path + [child]
+            if child not in visited:
+                visited.add(child)
+                queue.append(path + [child])
+
+    return []
 
 
 def parse_transitive_dependencies(lockfile_path, direct_names):

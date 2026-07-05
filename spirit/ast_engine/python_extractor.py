@@ -1,5 +1,6 @@
 from tree_sitter import Language, Parser
 import tree_sitter_python as tspy
+import re
 
 # Initialize the Python AST Parser
 PY_LANGUAGE = Language(tspy.language())
@@ -11,6 +12,9 @@ class PythonExtractor:
     def extract_all(self, source_code, filepath):
         results = []
         results.extend(self.extract_requests_ssl(source_code))
+        results.extend(self.extract_hashlib(source_code))
+        results.extend(self.extract_jwt(source_code))
+        results.extend(self.extract_flask_cors(source_code))
         return results
 
     def _text(self, node, source):
@@ -49,4 +53,52 @@ class PythonExtractor:
                 walk(child)
 
         walk(tree.root_node)
+        return findings
+    def extract_hashlib(self, source):
+        findings = []
+
+        pattern = r"hashlib\.md5\s*\("
+
+        for match in re.finditer(pattern, source):
+            line = source[:match.start()].count("\n") + 1
+
+            findings.append({
+                "library": "hashlib",
+                "parameter": "hash",
+                "value": "md5",
+                "line": line
+            })
+
+        return findings
+    def extract_jwt(self, source):
+        findings = []
+
+        pattern = r'algorithm\s*=\s*["\']none["\']'
+
+        for match in re.finditer(pattern, source):
+            line = source[:match.start()].count("\n") + 1
+
+            findings.append({
+                "library": "jwt",
+                "parameter": "algorithm",
+                "value": "none",
+                "line": line
+            })
+
+        return findings
+    def extract_flask_cors(self, source):
+        findings = []
+
+        pattern = r'origins\s*=\s*["\']\*["\']'
+
+        for match in re.finditer(pattern, source):
+            line = source[:match.start()].count("\n") + 1
+
+            findings.append({
+                "library": "flask-cors",
+                "parameter": "cors_origin",
+                "value": "*",
+                "line": line
+            })
+
         return findings

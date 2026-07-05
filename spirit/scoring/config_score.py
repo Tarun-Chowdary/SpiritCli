@@ -9,6 +9,9 @@ class ConfigScorer:
             "axios",
             "mongoose",
             "express",
+            "lodash",
+            "hashlib",
+            "flask-cors",
             "lodash","requests"
         ]
 

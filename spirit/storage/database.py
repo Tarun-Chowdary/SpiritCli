@@ -1,5 +1,6 @@
 import sqlite3
 import os
+from pathlib import Path
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "scans.db")
 
@@ -60,6 +61,8 @@ def save_vulnerabilities(package_name, version, vuln_list):
 
 
 def save_scan(path, score, zone, findings_count):
+    path = str(Path(path).resolve())
+
     from datetime import datetime
 
     conn = sqlite3.connect(DB_PATH)
@@ -75,6 +78,7 @@ def save_scan(path, score, zone, findings_count):
 
 
 def get_scan_history(path, limit=10):
+    path = str(Path(path).resolve())
     conn = sqlite3.connect(DB_PATH)
     rows = conn.execute(
         """

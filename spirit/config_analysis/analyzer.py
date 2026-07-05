@@ -28,6 +28,10 @@ class ConfigAnalyzer:
                 raw_findings = self.rule_engine.evaluate_lodash(config)
             elif library == "requests":
                 raw_findings = self.rule_engine.evaluate_requests(config)
+            elif library == "hashlib":
+                raw_findings = self.rule_engine.evaluate_hashlib(config)
+            elif library == "flask-cors":
+                raw_findings = self.rule_engine.evaluate_flask_cors(config)    
             for rf in raw_findings:
                 findings.append(
                     Finding(

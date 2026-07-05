@@ -220,3 +220,54 @@ class RuleEngine:
             )
 
         return findings
+    def evaluate_hashlib(self, extracted):
+        findings = []
+
+        rules = self.knowledge_base.get("hashlib", {})
+        patterns = rules.get("patterns", {})
+
+        parameter = extracted.get("parameter")
+        value = extracted.get("value")
+
+        if parameter == "hash" and value == "md5":
+            pattern = patterns.get("md5", {})
+
+            findings.append({
+                "severity": pattern.get("severity", "critical"),
+                "library": "hashlib",
+                "parameter": "hash",
+                "value": "md5",
+                "message": pattern.get(
+                    "message",
+                    "MD5 hashing detected -- cryptographically broken."
+                ),
+                "fix": "Use bcrypt or Argon2 instead of MD5."
+            })
+
+        return findings
+    
+    def evaluate_flask_cors(self, extracted):
+        findings = []
+
+        rules = self.knowledge_base.get("flask-cors", {})
+        patterns = rules.get("patterns", {})
+
+        parameter = extracted.get("parameter")
+        value = extracted.get("value")
+
+        if parameter == "cors_origin" and value == "*":
+            pattern = patterns.get("cors_wildcard", {})
+
+            findings.append({
+                "severity": pattern.get("severity", "high"),
+                "library": "flask-cors",
+                "parameter": "cors_origin",
+                "value": "*",
+                "message": pattern.get(
+                    "message",
+                    "CORS wildcard (*) allows any origin."
+                ),
+                "fix": "Restrict CORS to trusted origins."
+            })
+
+        return findings

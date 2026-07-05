@@ -159,6 +159,12 @@ def get_fix_rules():
                 "description": "JWT algorithm -> HS256",
                 "validate": lambda old, new: "HS256" in new,
             },
+            {
+                "pattern": r'algorithm\s*=\s*["\']none["\']',
+                "replacement": 'algorithm="HS256"',
+                "description": "Python JWT algorithm -> HS256",
+                "validate": lambda old, new: 'algorithm="HS256"' in new,
+            },
         ],
         "axios": [
             {
@@ -209,6 +215,14 @@ def get_fix_rules():
                 "description": "lodash.merge -> Object.assign",
                 "validate": lambda old, new: "Object.assign" in new,
             },
+        ],
+        "flask-cors": [
+            {
+                "pattern": r'origins\s*=\s*["\']\*["\']',
+                "replacement": 'origins=["https://domain.com"]',
+                "description": "Restrict Flask CORS wildcard",
+                "validate": lambda old, new: "domain.com" in new,
+            }
         ],
     }
 
@@ -464,7 +478,7 @@ def fix(path):
 
     fixable = [
         f for f in report.findings
-        if f.library in ["bcrypt", "jwt", "axios", "mongoose", "express", "lodash", "requests", "dockerfile"]
+        if f.library in ["bcrypt", "jwt", "axios", "mongoose", "express", "lodash", "requests", "dockerfile", "hashlib", "flask-cors"]
         and f.file != "package.json"
         and os.path.exists(f.file)
     ]

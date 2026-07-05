@@ -1,0 +1,9 @@
+{
+    "library": "flask-cors",
+    "patterns": {
+        "cors_wildcard": {
+            "severity": "high",
+            "message": "CORS wildcard (*) allows any origin."
+        }
+    }
+}

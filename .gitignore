@@ -1,8 +1,30 @@
-venv
-.venv/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+spiritcli.egg-info/
+
+# Python
 __pycache__/
 *.pyc
-.pytest_cache
+*.pyo
 spirit/storage/scan_cache.json
 spirit/storage/scans.db
-*.egg-info/
+
+
+# Virtual environments
+venv/
+.venv/
+testenv/
+testenv2/
+
+# Caches
+.pytest_cache/
+
+# Editor
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db

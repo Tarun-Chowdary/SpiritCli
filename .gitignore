@@ -23,7 +23,7 @@ testenv2/
 .pytest_cache/
 
 # Editor
-.vscode
+.vscode/
 
 # OS
 .DS_Store

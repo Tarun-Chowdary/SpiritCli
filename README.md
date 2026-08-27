@@ -1,4 +1,4 @@
-# SpiritCLI
+##SpiritCLI
 
 **Real-Time Dependency Security Intelligence for Banking Codebases**
 

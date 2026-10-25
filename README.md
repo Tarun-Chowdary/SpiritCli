@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 <h1 align="center">SpiritCli</h1>
+=======
+##SpiritCLI
+>>>>>>> 6468c8b1757b9f22aa001c9461c047e7a560a406
 
 **Real-Time Dependency Security Intelligence for Banking Codebases**
 
